@@ -95,7 +95,7 @@ save(studDat,file='data/studDat.RData')
 flpsDat=
   inner_join(
     select(probPartDat,
-           StuID,firstTry,ProblemID,probPart,ProblemSet),
+           StuID,firstTry,ProblemID,probPart,ProblemOrder,ProblemSet,PartOrder),
     studDat
   )%>%
   mutate(Z=ifelse(rdm_condition=='ASSISTments',1,0),
