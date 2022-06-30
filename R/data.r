@@ -6,7 +6,7 @@ library(missForest)
 
 actDat=read_csv('data/logs_for_adam.csv')
 
-studDat=read_csv('../../fh2t/data/DATA20220202_3591.csv',na=c('','NA','#NULL!'))%>%
+studDat=read_csv('data/DATA20220202_3591.csv',na=c('','NA','#NULL!'))%>%
   filter(rdm_condition%in%c('ASSISTments','BAU'))
 
 probMeta=read_csv('data/ASSISTments-Table 1.csv')
