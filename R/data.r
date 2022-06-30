@@ -81,14 +81,16 @@ studDat=
            pre_PS_tasks_total_score,
         mid.total_math_score,post.total_math_score)
 
-covariates=studDat%>%select(-rdm_condition,-Scale.Score7,-mid.total_math_score,-post.total_math_score,-teach,-class,-StuID)%>%as.data.frame()
+covariates=studDat%>%select(-rdm_condition,-Scale.Score7,-mid.total_math_score,-post.total_math_score,-teach,-class,-StuID)%>%mutate(across(where(is.logical),as.factor))%>%as.data.frame()
 
 imp=missForest(covariates)
 save(imp,file='data/covariatesImp.RData')
 
 
-for(nn in names(imp$ximp))
+for(nn in names(imp$ximp)){
+  if(is.factor(imp$ximp[[nn]])&is.logical(studDat[[nn]])) imp$ximp[[nn]]<-imp$ximp[[nn]]=='TRUE'
   studDat[[nn]]=imp$ximp[[nn]]
+}
 
 save(studDat,file='data/studDat.RData')
 
