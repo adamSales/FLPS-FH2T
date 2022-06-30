@@ -4,6 +4,7 @@ library(lme4)
 library(missForest)
 library(rstan)
 library(arm)                                        #actDat0=read_csv('data/IES_action_logs_with_hints.csv')
+library(splines)
 
 load('data/probPartDat.RData')
 load('data/studDat.RData')
