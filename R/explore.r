@@ -3,7 +3,7 @@ library(lubridate)
 library(lme4)
 library(missForest)
 library(rstan)
-                                        #actDat0=read_csv('data/IES_action_logs_with_hints.csv')
+library(arm)                                        #actDat0=read_csv('data/IES_action_logs_with_hints.csv')
 
 load('data/probPartDat.RData')
 load('data/studDat.RData')
@@ -159,6 +159,14 @@ save(raschML,file='fittedModels/raschMLMod.RData')
 
 anova(raschML,rasch)
 
+raschPS=glmer(firstTry~as.factor(ProblemSet)+(1|StuID),
+            family=binomial,data=probPartDat,
+            subset=condition=='ASSISTments')
+save(raschML,file='fittedModels/raschPS.RData')
+
+
+
+
 etaHat=ranef(rasch,condVar=TRUE)
 etaHat=etaHat$StuID
 names(etaHat)='etaHat'
@@ -174,12 +182,12 @@ etaHatML$StuID=as.numeric(rownames(etaHatML))
 plot(etaHat$etaHat,etaHatML$etaHat)
 plot(etaHat$vv,etaHatML$vv)
 
-studDatT=full_join(studDatT,etaHat)
+studDatT=full_join(studDatT,etaHatML)
 
 
 ggplot(studDatT,aes(correctness,etaHat))+geom_point()+geom_smooth()
 ggplot(studDatT,aes(nprob,etaHat))+geom_point()+geom_smooth()
-ggplot(studDatT,aes(nprob,vv))+geom_point()+geom_smooth()
+ggplot(studDatT,aes(nprob,1/vv))+geom_point()+geom_smooth()
 
 studDatT%>%pivot_longer(c(etaHat,correctness),names_to='measure',values_to='value')%>%
   mutate(measure=ifelse(measure=='etaHat','Estimated Ability','% Correct 1st Try'))%>%
@@ -290,8 +298,20 @@ psMod1=glmer(firstTry~as.factor(ProblemSet)+(1|StuID)+(1|ProblemID/probPart)+
             subset=Z==1)
 save(psMod1,file='fittedModels/psMod1.RData')
 
+sss1=sim(psMod1,500)
+mm=model.matrix(~MALE+race+as.factor(teach)+accelerated+
+               Scale.Score5+pre.total_math_score+EIP+ESOL+GIFTED+
+               IEP+AbsentDays6+pre.avg_time_on_tasks+
+               pre_MA_total_score+pre_MSE_total_score+
+               pre_PS_tasks_total_score,data=subset(studDat,StuID%in%rownames(re2$StuID)))[,-1]
+rownames(mm)=subset(studDat,StuID%in%rownames(re2$StuID))$StuID
+ppp=mm%*%t(sss1@fixef[,colnames(mm)])
+studEff1=ranef(sss)$StuID[,,1]+t(ppp[colnames(ranef(sss)$StuID[,,1]),])
+
 ps=predict(psMod1,type='response')
 arm::binnedplot(ps,psMod1@frame$firstTry-ps)
+
+
 
 
 psMod2=glmer(firstTry~(1|StuID)+(1|probPart)+
