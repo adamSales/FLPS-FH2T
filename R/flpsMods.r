@@ -32,6 +32,9 @@ sdat$X=model.matrix(
     pre_MA_total_score+pre_MSE_total_score+
     pre_PS_tasks_total_score,
   data=studDat1)
+
+Xsds=apply(sdat$X[,-1],2,sd)
+
 sdat$X[,-1]=scale(sdat$X[,-1])
 sdat$Z=ifelse(studDat1$rdm_condition=='ASSISTments',1,0)
 sdat$Y=studDat1$Scale.Score7
@@ -42,4 +45,4 @@ sdat$nstud=nrow(studDat1)
 sdat$nprob=max(sdat$prob)
 
 flpsRasch1=stan('R/rasch1lev.stan',data=sdat,chains=8,iter=5000,warmup=4000,thin=2)
-save(flpsRasch1,sdat,file='fittedModels/flpsRasch1.RData')
+save(flpsRasch1,sdat,Xsds,file='fittedModels/flpsRasch1.RData')
