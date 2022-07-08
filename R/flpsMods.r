@@ -11,14 +11,20 @@ load('data/flpsDat.RData')
 
 ### first try flps
 studDat1=studDat%>%
-  filter(StuID%in%flpsDat$StuID,!is.na(Scale.Score7))%>%
+    filter(StuID%in%flpsDat$StuID,!is.na(Scale.Score7))%>%
+    group_by(teach)%>%
+    mutate(teachTrt=n_distinct(rdm_condition))%>%
+    ungroup()%>%
+    filter(teachTrt>1)%>%select(-teachTrt)%>%
   arrange(StuID)%>%
   mutate(
     stud=as.numeric(as.factor(StuID))
   )
 
 ### flps dat only IDs that are in studDat1 & new stud id
-flpsDat1=right_join(flpsDat,select(studDat1,StuID,stud))
+flpsDat1=flpsDat%>%
+    filter(Z==1)%>%
+    inner_join(select(studDat1,StuID,stud))
 
 sdat=with(flpsDat1,
           list(
