@@ -24,6 +24,12 @@ covNamesCompare=intersect(names(betaUmle),rownames(betaU))[-1]
 plot(betaUmle[covNamesCompare],
      betaU[covNamesCompare,'mean']/Xsds[covNamesCompare])
 abline(0,1)
+
+covNamesCompare=covNamesCompare[!grepl('teach',covNamesCompare)]
+plot(betaUmle[covNamesCompare],
+     betaU[covNamesCompare,'mean']/Xsds[covNamesCompare],main='no teach FE')
+abline(0,1)
+
 dev.off()
 
 round(summ[-grep('Eff|beta',rownames(summ)),c(1:4,8:10)],3)

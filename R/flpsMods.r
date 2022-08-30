@@ -21,6 +21,11 @@ studDat1=studDat%>%
     stud=as.numeric(as.factor(StuID))
   )
 
+Ypsd=studDat1%>%ungroup()%>%group_by(rdm_condition)%>%
+    summarize(v=var(Scale.Score7),n=n())%>%
+    ungroup()%>%
+    summarize(pVar=sum(v*(n-1))/(sum(n)-2),psd=sqrt(pVar))%>%pull(psd)
+
 ### flps dat only IDs that are in studDat1 & new stud id
 flpsDat1=flpsDat%>%
     filter(Z==1)%>%
@@ -43,7 +48,7 @@ Xsds=apply(sdat$X[,-1],2,sd)
 
 sdat$X[,-1]=scale(sdat$X[,-1])
 sdat$Z=ifelse(studDat1$rdm_condition=='ASSISTments',1,0)
-sdat$Y=studDat1$Scale.Score7
+sdat$Y=studDat1$Scale.Score7/Ypsd
 
 sdat$nprobWorked=nrow(flpsDat1)
 sdat$ncov=ncol(sdat$X)
@@ -51,4 +56,4 @@ sdat$nstud=nrow(studDat1)
 sdat$nprob=max(sdat$prob)
 
 flpsRasch1=stan('R/rasch1lev.stan',data=sdat,chains=8,iter=5000,warmup=4000,thin=2)
-save(flpsRasch1,sdat,Xsds,file='fittedModels/flpsRasch1.RData')
+save(flpsRasch1,sdat,Xsds,Ypsd,file='fittedModels/flpsRasch1.RData')

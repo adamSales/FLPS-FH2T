@@ -24,15 +24,16 @@ parameters{
  vector[ncov] betaU;
  vector[ncov] betaY;
 
+ real a0;
  real a1;
  real b0;
  real b1;
 
  real probEff[nprob];
 
- real<lower=0> sigY[2];
+ real<lower=0> sigY;//[2];
  real<lower=0> sigU;
- real<lower=0> sigProb;
+ //real<lower=0> sigProb;
 }
 
 model{
@@ -40,33 +41,33 @@ model{
  vector[nstud] muY;
 // real useEff[nstud];
 // real trtEff[nstud];
- real sigYI[nstud];
+// real sigYI[nstud];
 
 
 // firstTry model
  for(i in 1:nprobWorked)
-  linPred[i]= probEff[prob[i]]+studEff[studentM[i]];
+  linPred[i]= studEff[studentM[i]]-probEff[prob[i]];
 
- for(i in 1:nstud){
+ //for(i in 1:nstud){
   //useEff[i]=a1*studEff[i];
   //trtEff[i]=b0+b1*studEff[i];
   //muY[i]=useEff[i]+Z[i]*trtEff[i];
-  sigYI[i]=Z[i]>0 ? sigY[2]:sigY[1];//sigY[Z[i]+1];
- }
+  //sigYI[i]=Z[i]>0 ? sigY[2]:sigY[1];//sigY[Z[i]+1];
+ //}
 
  //priors
  betaY~std_normal();
  betaU~std_normal();
 
-// a0~std_normal();
+ a0~std_normal();
  a1~std_normal();
  b0~std_normal();
  b1~std_normal();
 
- probEff~normal(0,sigProb);
+ probEff~normal(0,1);//sigProb);
 
  firstTry~bernoulli_logit(linPred);
 
  studEff~normal(X*betaU,sigU);
- Y~normal(X*betaY+a1*studEff+(Z .*(b0+b1*studEff)),sigYI);
+ Y~normal(a0+X*betaY+a1*studEff+(Z .*(b0+b1*studEff)),sigY);
 }
