@@ -12,7 +12,8 @@ data{
 // data data
  int<lower=0,upper=1> firstTry[nprobWorked];
  matrix[nstud,ncov] X;
- int<lower=0,upper=1> Z[nstud];
+ //int<lower=0,upper=1> Z[nstud];
+ vector[nstud] Z;
  real Y[nstud];
 
 }
@@ -23,49 +24,52 @@ parameters{
  vector[ncov] betaU;
  vector[ncov] betaY;
 
+ real a0;
  real a1;
  real b0;
  real b1;
 
+ real<lower=0> disc[nprob];
  real probEff[nprob];
 
- //real<lower=0> sigY[2];
+ real<lower=0> sigY;//[2];
  real<lower=0> sigU;
- real<lower=0> sigProb;
+ //real<lower=0> sigProb;
 }
 
 model{
  real linPred[nprobWorked];
-// vector[nstud] muY;
-// vector[nstud] muU;
+ vector[nstud] muY;
 // real useEff[nstud];
 // real trtEff[nstud];
- //real sigYI[nstud];
+// real sigYI[nstud];
 
 
 // firstTry model
  for(i in 1:nprobWorked)
-  linPred[i]= probEff[prob[i]]+studEff[studentM[i]];
+  linPred[i]= disc[prob[i]]*(studEff[studentM[i]]-probEff[prob[i]]);
 
- // for(i in 1:nstud){
- //  useEff[i]=a1*studEff[i];
- //  trtEff[i]=b0+b1*studEff[i];
- //  muY[i]=useEff[i]+Z[i]*trtEff[i];
- //  sigYI[i]=sigY[Z[i]+1];
- // }
+ //for(i in 1:nstud){
+  //useEff[i]=a1*studEff[i];
+  //trtEff[i]=b0+b1*studEff[i];
+  //muY[i]=useEff[i]+Z[i]*trtEff[i];
+  //sigYI[i]=Z[i]>0 ? sigY[2]:sigY[1];//sigY[Z[i]+1];
+ //}
 
  //priors
- betaY~normal(0,2);
- betaU~normal(0,2);
+ betaY~std_normal();
+ betaU~std_normal();
 
+ a0~std_normal();
  a1~std_normal();
  b0~std_normal();
  b1~std_normal();
 
- probEff~normal(0,sigProb);
+ probEff~normal(0,1);//sigProb);
+ disc~lognormal(0,2);
 
  firstTry~bernoulli_logit(linPred);
 
  studEff~normal(X*betaU,sigU);
- Y~binomial(10,X*betaY+a1*studEff+(Z .*(b0+b1*studEff)));
+ Y~normal(a0+X*betaY+a1*studEff+(Z .*(b0+b1*studEff)),sigY);
 }
