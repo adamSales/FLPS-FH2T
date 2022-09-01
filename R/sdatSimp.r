@@ -35,7 +35,8 @@ sdat=with(flpsDat1,
           list(
             studentM=stud,
             prob=as.numeric(as.factor(probPart)),
-            firstTry=firstTry))
+            firstTry=firstTry,
+            feedbackOrd=feedbackOrd))
 sdat$X=model.matrix(
   ~MALE+race+as.factor(teach)+accelerated+
     Scale.Score5+pre.total_math_score+EIP+ESOL+GIFTED+

@@ -36,12 +36,15 @@ probPartDat=
   filter(!is.na(StuID),!is.na(condition))%>%
   group_by(StuID,condition,ProblemID,Subproblem,ProblemSet,ProblemOrder,Hints)%>%
   summarize(
+    nact=n(),
+    drop=all(action%in%c('start','resume')),
     nerr=sum(action=='incorrect response'),
     everCorrect=any(action=='correct response'),
     bottomOut=any(action=='answer_hint'),
     nhint=sum(action%in%c('hint','answer_hint','help_stuck')),
     firstTry=everCorrect&nerr==0&nhint==0,
-    n=n())
+    n=n())%>%
+  filter(!drop)
 
 ### an order variable incorporating problem part
 
@@ -55,6 +58,16 @@ probPartDat=probPartDat%>%
   ungroup()
 
 probPartDat$probPart=paste0(probPartDat$ProblemID,'-',probPartDat$Subproblem)
+
+probPartDat <- probPartDat%>%
+  mutate(feedback=nerr+nhint,feedbackOrd=ifelse(feedback==0,1,ifelse(bottomOut,3,2)))
+
+### what about when students start problems and do nothing else?
+probPartDat%>%filter(nact<4)%>%group_by(condition,nact)%>%summarize(mean(everCorrect))
+
+xtabs(~nact+condition,data=filter(probPartDat,nact<4))
+
+probPartDat <- filter(probPartDat,nact>2)
 
 save(probPartDat,file='data/probPartDat.RData')
 
@@ -83,9 +96,9 @@ studDat=
 
 covariates=studDat%>%select(-rdm_condition,-Scale.Score7,-mid.total_math_score,-post.total_math_score,-teach,-class,-StuID)%>%mutate(across(where(is.logical),as.factor))%>%as.data.frame()
 
-imp=missForest(covariates)
-save(imp,file='data/covariatesImp.RData')
-
+#imp=missForest(covariates)
+#save(imp,file='data/covariatesImp.RData')
+load('data/covariatesImp.RData')
 
 for(nn in names(imp$ximp)){
   if(is.factor(imp$ximp[[nn]])&is.logical(studDat[[nn]])) imp$ximp[[nn]]<-imp$ximp[[nn]]=='TRUE'
@@ -97,10 +110,10 @@ save(studDat,file='data/studDat.RData')
 flpsDat=
   inner_join(
     select(probPartDat,
-           StuID,firstTry,ProblemID,probPart,ProblemOrder,ProblemSet,PartOrder),
+           StuID,firstTry,ProblemID,probPart,ProblemOrder,ProblemSet,PartOrder,feedbackOrd),
     studDat
   )%>%
   mutate(Z=ifelse(rdm_condition=='ASSISTments',1,0),
-         firstTry=ifelse(Z==1,firstTry,0))
+         firstTry=ifelse(Z==1,firstTry,0),)
 
 save(flpsDat,file='data/flpsDat.RData')
