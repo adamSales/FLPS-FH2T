@@ -1,23 +1,26 @@
-library(tidyverse)
+library(rstan)
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+
+library(tidyr)#verse)
 load('data/sdatSimp.RData')
 
-setwd('../FLPS')
-devtools::load_all()
-setwd('../FLPS-FH2T')
 
-inpDat <- with(sdat,data.frame(Y,Z,X))
-ddd <- with(sdat,data.frame(feedbackOrd,studentM,prob))
-usage <- ddd%>%pivot_wider(id_cols=studentM,names_from="prob",values_from="feedbackOrd",names_prefix='i')
-usage <- as.matrix(as.data.frame(usage))
-usage2 <- matrix(nrow=sdat$nstud,ncol=sdat$nprob)
-for(i in 1:nrow(usage)) usage2[usage[i,1],] <- usage[i,-1]
+## sdat$nfac <- 1
+## sdat$min_k <- min(sdat$feedbackOrd)
+## sdat$max_k <- max(sdat$feedbackOrd)
+## sdat$section <- sdat$prob
+## names(sdat) <- gsub('prob','sec',names(sdat))
+## sdat$lambda_prior <- sdat$factoridx <- matrix(1,nrow=sdat$nsec,ncol=1)
+## sdat$firstitem <- c(1,rep(0,sdat$nsec-1))
+## sdat$grad <- sdat$feedbackOrd
 
-colnames(usage2) <- colnames(usage)[-1]
+sdat$X <- cbind(intercept=1,sdat$X)
+sdat$ncov <- sdat$ncov+1
 
-inpDat <- cbind(inpDat,usage2)
-
-sss <- makeFLPSdata(inpDat,'Y','Z',names(data.frame(sdat$X)),lv_model=paste0("F=~",paste0("i",1:sdat$nprob,collapse='+')),lv_type='GPCM',stan_options=list(iter=10,chains=1))
-
-fit <- runFLPS(inpDat,outcome='Y',group='Z',covariate=names(data.frame(sdat$X)),lv_model=paste0("F=~",paste0("i",1:sdat$nprob,collapse='+')),lv_type='GPCM',stan_options=list(iter=5000,chain=8,warmup=4000,thin=2))
+fit <- stan('R/gpcm.stan',model_name='gpcm',data=sdat,chains=8,iter=5000,warmup=4000,thin=2)
 
 save(fit,file='fittedModels/gpcm.RData')
+
+
+  
