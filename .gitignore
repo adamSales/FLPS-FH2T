@@ -42,3 +42,8 @@ vignettes/*.pdf
 *~
 *#
 desktop.ini
+
+
+### adam's additions
+*.rds
+*.out
