@@ -1,10 +1,68 @@
 library(rstan)
-library(tidyverse)
+#library(tidyverse)
+library(dplyr)
 library(lme4)
+library(ggplot2)
+
 
 load('fittedModels/flpsRasch1.RData')
-summ=summary(flpsRasch1)
-summ=summ$summary
+load('fittedModels/flps2plStan.RData')
+load('fittedModels/grm2.RData')
+
+raschsumm=summary(flpsRasch1)
+raschsumm=raschsumm$summary
+tplsumm <- summary(flps2pl)
+tplsumm <- tplsumm$summary
+grmsumm <- summary(fit)
+grmsumm <- grmsumm$summary
+
+### check convergence
+rbind(
+    data.frame(rhat=raschsumm[,'Rhat'],model='rasch'),
+    data.frame(rhat=tplsumm[,'Rhat'],model='2PL'),
+    data.frame(rhat=grmsumm[,'Rhat'],model='GRM'))%>%
+    group_by(model)%>%mutate(lab=c(paste(n(),'parameters\n',sum(rhat>1.1),'>1.1\n',sum(rhat>1.01),'>1.01'),rep(NA,length(rhat)-1)))%>%
+    ggplot(aes(rhat))+geom_histogram(bins=50)+geom_vline(xintercept=c(1.01,1.1))+
+    facet_wrap(~model)+geom_label(aes(x=1.03,y=2000,label=lab))
+#    geom_label(aes(x=1.03,y=1750,label=over1.1))+
+#    geom_label(aes(x=1.03,y=1500,label=over1.01))
+ggsave('plots/rhats.pdf')    
+
+
+raschStudEff <- raschsumm[paste0('studEff[',seq(sdat$nstud),']'),'mean']
+raschProbEff <- raschsumm[paste0('probEff[',seq(sdat$nprob),']'),'mean']
+
+pd <- bind_rows(
+    tibble(est=c(raschStudEff,raschProbEff),par=c(rep('\\eta_T',sdat$nstud),rep('diff.',sdat$nprob)),model='Rasch'),
+    tibble(est=tplsumm[startsWith(rownames(tplsumm),'alpha['),'mean'],par='\\eta_T',model='2PL'),
+    tibble(est=tplsumm[startsWith(rownames(tplsumm),'beta['),'mean']+tplsumm['mu_beta','mean'],par='diff.',model='2PL'),
+    tibble(est=tplsumm[startsWith(rownames(tplsumm),'gamma['),'mean'],par='disc.',model='2PL'),
+    tibble(est=grmsumm[startsWith(rownames(grmsumm),'alpha['),'mean'],par='\\eta_T',model='GRM'),
+    tibble(est=grmsumm[paste0('beta[',1:sdat$nprob,',1]'),'mean'],par='d_1',model='GRM'),
+    tibble(est=grmsumm[paste0('beta[',1:sdat$nprob,',2]'),'mean'],par='d_2',model='GRM'),
+    tibble(est=grmsumm[paste0('gamma[',1:sdat$nprob,']'),'mean'],par='disc',model='GRM'))
+    
+ggplot(pd,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=0.1,outlier.shape=NA)+
+    facet_wrap(~model,scales='free_x')
+
+parCor <- sapply(1:sdat$nprob,function(x) mean(sdat$firstTry[sdat$prob==x]))
+plot(-raschProbEff,parCor)
+
+studParCor <- sapply(1:sdat$nstud,function(x) mean(sdat$firstTry[sdat$stud==x]))
+plot(studEff,studParCor)
+
+nprobStud <- sapply(1:sdat$nstud,function(x) sum(sdat$studentM==x))
+plot(studEff,nprobStud)
+
+cor.test(studParCor,nprobStud,method='spearman',use='pairwise')
+
+studEase <- sapply(1:sdat$nstud,function(x) mean(raschProbEff[sdat$prob[sdat$studentM==x]]))
+plot(studEase,studParCor)
+
+studEase <- sapply(1:sdat$nstud,function(x) mean(raschProbEff[sdat$prob[sdat$studentM==x]]))
+plot(studEase,studEff)
+
+plot(nprobStud,studEase)
 
 pdf('plots/flpsRasch1/rhats.pdf')
 hist(summ[,'Rhat'])
