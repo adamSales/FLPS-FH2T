@@ -1,20 +1,47 @@
 library(rstan)
 library(tidyverse)
 library(lme4)
+library(huxtable)
+library(broom)
+library(flextable)
 
+
+
+
+load('fittedModels/classicPS.RData')
 load('fittedModels/flpsRasch1.RData')
 summ=summary(flpsRasch1)
 summ=summ$summary
+
+drawsRasch <- rstan::extract(flpsRasch1)
 
 pdf('plots/flpsRasch1/rhats.pdf')
 hist(summ[,'Rhat'])
 dev.off()
 
+summObs <- summary(psObs)$summary
+drawsObs <- rstan::extract(psObs)
+
+betaUobs <- summObs[grep('betaU',rownames(summObs)),]
+rownames(betaUobs) <- colnames(sdat$X)
+betaUobs <- cbind(betaUobs,p=apply(drawsObs$betaU,2,function(x) 2*min(mean(x<0),mean(x>0))))
+betaUobs <- betaUobs[!grepl('as.factor(teach)',rownames(betaUobs),fixed=TRUE),]
+class(betaUobs) <- 'stanSumm'
+
 betaU <- summ[grep('betaU',rownames(summ)),]
 rownames(betaU) <- colnames(sdat$X)
+betaU <- cbind(betaU,p=apply(draws$betaU,2,function(x) 2*min(mean(x<0),mean(x>0))))
+betaU <- betaU[!grepl('as.factor(teach)',rownames(betaU),fixed=TRUE),]
+class(betaU) <- 'stanSumm'
+
+huxreg(betaUobs,betaU)%>%
+  as_flextable()%>%
+  save_as_docx(path='tables/betaU.docx')
 
 betaY <- summ[grep('betaY',rownames(summ)),]
 rownames(betaY) <- colnames(sdat$X)
+betaY <- cbind(betaY,p=apply(draws$betaU,2,function(x) 2*min(mean(x<0),mean(x>0))))
+
 
 print(load('fittedModels/psMod1.RData'))
 betaUmle=lme4::fixef(psMod1)
@@ -97,7 +124,7 @@ dev.off()
 ###############3
 ### summaries from main model
 #################
-draws <- rstan::extract(flpsRasch1)
+
 
 ### for "multImp" and "trtEff"
 set.seed(613)
@@ -215,3 +242,23 @@ print(ggplot(pdMain)+
     theme(text=element_text(size=15),legend.key.width=unit(.5,'in')))
 dev.off()
 setwd('figure'); tools::texi2dvi('mainEffects.tex', pdf = T, clean = T); setwd('..')
+
+
+
+
+summGrm <- summary(fitGrm)$summ
+parNames <- strsplit(rownames(summGrm),'[',fixed=TRUE)%>%
+  map_chr(~.[1])
+
+smallPars <- names(table(parNames)[table(parNames)<49])
+Rhats <- summGrm[!parNames%in%smallPars,'Rhat']%>%
+  split(factor(parNames[!parNames%in%smallPars]),drop=TRUE)
+
+iwalk(Rhats,~hist(.x,main=.y))
+
+map(Rhats,~head(sort(.,dec=T)))
+
+traceplot(fitGrm,par='betaU')
+traceplot(fitGrm,par='betaY')
+traceplot(fitGrm,par=names(head(sort(Rhats$lambda,dec=T))))
+traceplot(fitGrm,par=names(head(sort(Rhats$tau,dec=T))))
