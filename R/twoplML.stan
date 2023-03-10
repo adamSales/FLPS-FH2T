@@ -1,5 +1,4 @@
 data{
-
 //Sample sizes
  int<lower=1> nprobWorked;
  int<lower=1> ncov;
@@ -11,7 +10,7 @@ data{
  int<lower=1,upper=nprob> prob[nprobWorked];
 
 // data data
- int<lower=1,upper=3> feedbackOrd[nprobWorked];
+ int<lower=0,upper=1> firstTry[nprobWorked];
  matrix[nstud,ncov] X;
  //int<lower=0,upper=1> Z[nstud];
  vector[nstud] Z;
@@ -30,35 +29,36 @@ parameters{
  real b0;
  real b1;
 
- real<lower=0> disc[nprob];
- real probEff1[nprob];
- real<lower=0> probEffDiff[nprob];
-
- real pe1;
- real<lower=0> ped;
+ real disc[nprob];
+ real probEff[nprob];
 
  real<lower=0> sigY;//[2];
  real<lower=0> sigU;
  real<lower=0> sigProb;
- real<lower=0> sigProbDiff;
-}
+ real meanProb;
+ real meanDisc;
+ real<lower=0> sigDisc;
 
-transformed parameters{
-
- ordered[2] probEff[nprob];
-
- for(i in 1:nprob){
-  probEff[i][1] = probEff1[i];
-  probEff[i][2] = probEff1[i]+probEffDiff[i];
- }
 }
 
 model{
  real linPred[nprobWorked];
  vector[nstud] muY;
+// real useEff[nstud];
+// real trtEff[nstud];
+// real sigYI[nstud];
 
 
+// firstTry model
+ for(i in 1:nprobWorked)
+  linPred[i]= disc[prob[i]]*(studEff[studentM[i]]-probEff[prob[i]]);
 
+ //for(i in 1:nstud){
+  //useEff[i]=a1*studEff[i];
+  //trtEff[i]=b0+b1*studEff[i];
+  //muY[i]=useEff[i]+Z[i]*trtEff[i];
+  //sigYI[i]=Z[i]>0 ? sigY[2]:sigY[1];//sigY[Z[i]+1];
+ //}
 
  //priors
  betaY~std_normal();
@@ -69,14 +69,15 @@ model{
  b0~std_normal();
  b1~std_normal();
 
- probEff1~normal(pe1,sigProb);
- probEffDiff~normal(ped,sigProbDiff);
- disc~lognormal(0,2);
+ meanProb~std_normal();
+ meanDisc~normal(1,1);
+ sigProb~cauchy(0,1);
+ sigDisc~cauchy(0,1);
+ 
+ probEff~normal(meanProb,sigProb);//sigProb);
+ disc~normal(meanDisc,sigDisc);
 
-// feedbackOrd model
- for(i in 1:nprobWorked){
-   feedbackOrd[i]~ordered_logistic(disc[prob[i]]*studEff[studentM[i]],probEff[prob[i]]);
- }
+ firstTry~bernoulli_logit(linPred);
 
  studEff~normal(X*betaU,sigU);
  Y~normal(a0+X*betaY+a1*studEff+(Z .*(b0+b1*studEff)),sigY);

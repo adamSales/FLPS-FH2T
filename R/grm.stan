@@ -1,5 +1,4 @@
 data{
-
 //Sample sizes
  int<lower=1> nprobWorked;
  int<lower=1> ncov;
@@ -31,26 +30,11 @@ parameters{
  real b1;
 
  real<lower=0> disc[nprob];
- real probEff1[nprob];
- real<lower=0> probEffDiff[nprob];
-
- real pe1;
- real<lower=0> ped;
+ ordered[2] probEff[nprob];
 
  real<lower=0> sigY;//[2];
  real<lower=0> sigU;
- real<lower=0> sigProb;
- real<lower=0> sigProbDiff;
-}
-
-transformed parameters{
-
- ordered[2] probEff[nprob];
-
- for(i in 1:nprob){
-  probEff[i][1] = probEff1[i];
-  probEff[i][2] = probEff1[i]+probEffDiff[i];
- }
+ //real<lower=0> sigProb;
 }
 
 model{
@@ -58,7 +42,7 @@ model{
  vector[nstud] muY;
 
 
-
+ 
 
  //priors
  betaY~std_normal();
@@ -69,8 +53,7 @@ model{
  b0~std_normal();
  b1~std_normal();
 
- probEff1~normal(pe1,sigProb);
- probEffDiff~normal(ped,sigProbDiff);
+// probEff~normal(0,1);//sigProb);
  disc~lognormal(0,2);
 
 // feedbackOrd model
