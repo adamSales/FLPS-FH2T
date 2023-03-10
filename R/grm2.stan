@@ -1,4 +1,5 @@
 data{
+
 //Sample sizes
  int<lower=1> nprobWorked;
  int<lower=1> ncov;
@@ -57,7 +58,7 @@ model{
  vector[nstud] muY;
 
 
- 
+
 
  //priors
  betaY~std_normal();

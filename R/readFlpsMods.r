@@ -3,10 +3,15 @@ library(rstan)
 library(dplyr)
 library(lme4)
 library(ggplot2)
+library(tikzDevice)
+library(tidyr)
 
 
+
+
+load('fittedModels/classicPS.RData')
 load('fittedModels/flpsRasch1.RData')
-load('fittedModels/flps2plStan.RData')
+load('fittedModels/flps2plStan2.RData')
 load('fittedModels/grm2.RData')
 
 raschsumm=summary(flpsRasch1)
@@ -15,6 +20,8 @@ tplsumm <- summary(flps2pl)
 tplsumm <- tplsumm$summary
 grmsumm <- summary(fit)
 grmsumm <- grmsumm$summary
+
+
 
 ### check convergence
 rbind(
@@ -28,9 +35,11 @@ rbind(
 #    geom_label(aes(x=1.03,y=1500,label=over1.01))
 ggsave('plots/rhats.pdf')    
 
-
 raschStudEff <- raschsumm[paste0('studEff[',seq(sdat$nstud),']'),'mean']
 raschProbEff <- raschsumm[paste0('probEff[',seq(sdat$nprob),']'),'mean']
+
+
+modelOrd=c('Classic','Rasch','2PL','GRM')
 
 pd <- bind_rows(
     tibble(est=c(raschStudEff,raschProbEff),par=c(rep('\\eta_T',sdat$nstud),rep('diff.',sdat$nprob)),model='Rasch'),
@@ -40,122 +49,190 @@ pd <- bind_rows(
     tibble(est=grmsumm[startsWith(rownames(grmsumm),'alpha['),'mean'],par='\\eta_T',model='GRM'),
     tibble(est=grmsumm[paste0('beta[',1:sdat$nprob,',1]'),'mean'],par='d_1',model='GRM'),
     tibble(est=grmsumm[paste0('beta[',1:sdat$nprob,',2]'),'mean'],par='d_2',model='GRM'),
-    tibble(est=grmsumm[paste0('gamma[',1:sdat$nprob,']'),'mean'],par='disc',model='GRM'))
+    tibble(est=grmsumm[paste0('gamma[',1:sdat$nprob,']'),'mean'],par='disc.',model='GRM'))%>%
+    mutate(model=factor(model,levels=modelOrd))
     
+pdf('plots/studEffs.pdf')
+
+pStud <- with(sdat,
+  vapply(1:nstud,function(i) mean(firstTry[studentM==i]),1.1))
+
+
+pd%>%
+filter(par=="\\eta_T")%>%
+group_by(model)%>%
+mutate(id=1:n())%>%
+pivot_wider( id_cols="id",names_from="model",values_from="est")%>%
+bind_cols(prop.correct=pStud)%>%
+select(-id)%>%
+pairs()
+dev.off()
+
+nProbDat=pd%>%
+filter(par=="\\eta_T")%>%
+group_by(model)%>%
+mutate(id=1:n())%>%
+ungroup()%>%
+bind_rows(tibble(id=1:sdat$nstud,est=pStud,par='\\hat{p}',model='Classic'))%>%
+group_by(model)%>%
+mutate(nProb=vapply(1:sdat$nstud,function(i) sum(sdat$studentM==i),1))%>%
+filter(nProb>0)
+
+nProbDat%>%
+mutate(fac=factor(paste0(model,' (',par,')'),levels=paste0(modelOrd,' (',c('\\hat{p}',rep('\\eta_T',3)),')')))%>%
+ggplot(aes(nProb,est))+geom_point()+facet_wrap(~fac,scales="free_y")+ theme(text = element_text(size = 30))   
+ggsave('plots/nprobWorked.pdf',width=6.3,height=4)
+
+nProbDat%>%
+summarize(rho=cor(nProb,est,method='spearman'))
+
+studAvgDiff=vapply(1:sdat$nstud,function(i) mean(raschProbEff[sdat$prob[sdat$studentM==i]]),1.1)
+studAvgDat=
+pd%>%
+filter(par=="\\eta_T")%>%
+group_by(model)%>%
+mutate(id=1:n())%>%
+ungroup()%>%
+bind_rows(tibble(id=1:sdat$nstud,est=pStud,par='\\hat{p}',model='Classic'))%>%
+group_by(model)%>%
+mutate(avgDiff=studAvgDiff)%>%
+filter(is.finite(avgDiff))
+
+studAvgDat%>%
+mutate(fac=factor(paste0(model,' (',par,')'),levels=paste0(modelOrd,' (',c('\\hat{p}',rep('\\eta_T',3)),')')))%>%
+ggplot(aes(avgDiff,est))+geom_point()+geom_smooth(method="lm")+facet_wrap(~fac,scales="free_y") + theme(text = element_text(size = 30))  
+ggsave('plots/avgDiff.pdf',width=6.3,height=4)
+
+studAvgDat%>%
+summarize(rho=cor(avgDiff,est,method='spearman'))
+
+
+pd%>%
+filter(par=="disc.")%>%
+droplevels()%>%
+group_by(model)%>%
+mutate(id=1:n())%>%
+pivot_wider( id_cols="id",names_from="model",values_from="est")%>%
+select(-id)%>%
+ggplot(aes(GRM,`2PL`))+geom_point()+ theme(text = element_text(size = 30))  
+ggsave('plots/disc.pdf')
+
+
+pdf('plots/diff.pdf')
+
+pProb= with(sdat,
+  vapply(1:nprob,function(i) mean(firstTry[prob==i]),1.1))
+
+
+pd%>%
+filter(par=="diff.")%>%
+droplevels()%>%
+group_by(model)%>%
+mutate(id=1:n())%>%
+pivot_wider( id_cols="id",names_from="model",values_from="est")%>%
+select(-id)%>%
+bind_cols(prop.correct=pProb)%>%pairs()
+dev.off()
+
+
 ggplot(pd,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=0.1,outlier.shape=NA)+
-    facet_wrap(~model,scales='free_x')
+    facet_wrap(~model,scales='free_x')+
+    scale_x_discrete(labels=c("\\eta_T"=expression(eta[T]),"d_1"=expression(d[1]),"d_2"=expression(d[2])))+
+    theme(text = element_text(size = 30))  
+ggsave('plots/measurementPars.pdf')
 
-parCor <- sapply(1:sdat$nprob,function(x) mean(sdat$firstTry[sdat$prob==x]))
-plot(-raschProbEff,parCor)
 
-studParCor <- sapply(1:sdat$nstud,function(x) mean(sdat$firstTry[sdat$stud==x]))
-plot(studEff,studParCor)
+#######################################################
+# change parameterization
+# for 2pl prob. intercept= -diff*disc
 
-nprobStud <- sapply(1:sdat$nstud,function(x) sum(sdat$studentM==x))
-plot(studEff,nprobStud)
+pd2=pd
+pd2$est[pd2$par=='diff.'&pd2$model=='2PL']=
+  with(rstan::extract(flps2pl),
+       colMeans(gamma*(sweep(beta,1,mu_beta,"+"))))
 
-cor.test(studParCor,nprobStud,method='spearman',use='pairwise')
+pd2$est[pd2$par=='d_1'&pd2$model=='GRM']=
+  with(rstan::extract(fit),
+       colMeans(gamma*beta[,,1]))
 
-studEase <- sapply(1:sdat$nstud,function(x) mean(raschProbEff[sdat$prob[sdat$studentM==x]]))
-plot(studEase,studParCor)
+pd2$est[pd2$par=='d_2'&pd2$model=='GRM']=
+  with(rstan::extract(fit),
+       colMeans(gamma*beta[,,2]))
 
-studEase <- sapply(1:sdat$nstud,function(x) mean(raschProbEff[sdat$prob[sdat$studentM==x]]))
-plot(studEase,studEff)
+pd2$par[pd2$par=='diff.'] = 'd'
+pd2$par[pd2$par=='disc.'] = 'a'
 
-plot(nprobStud,studEase)
+ggplot(pd2,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=0.1,outlier.shape=NA)+
+    facet_wrap(~model,scales='free_x')+
+    scale_x_discrete(labels=c("\\eta_T"=expression(eta[T]),"d_1"=expression(d[1]),"d_2"=expression(d[2])))+
+    theme(text = element_text(size = 30))+labs(x=NULL,y="Point Estimates")  
+ggsave('plots/measurementParsSlopeInt.pdf')
 
-pdf('plots/flpsRasch1/rhats.pdf')
-hist(summ[,'Rhat'])
-dev.off()
 
-betaU <- summ[grep('betaU',rownames(summ)),]
-rownames(betaU) <- colnames(sdat$X)
 
-betaY <- summ[grep('betaY',rownames(summ)),]
-rownames(betaY) <- colnames(sdat$X)
 
-print(load('fittedModels/psMod1.RData'))
-betaUmle=lme4::fixef(psMod1)
 
-pdf('plots/flpsRasch1/bayesVsMLEbetaU.pdf')
-covNamesCompare=intersect(names(betaUmle),rownames(betaU))[-1]
-plot(betaUmle[covNamesCompare],
-     betaU[covNamesCompare,'mean']/Xsds[covNamesCompare])
-abline(0,1)
 
-covNamesCompare=covNamesCompare[!grepl('teach',covNamesCompare)]
-plot(betaUmle[covNamesCompare],
-     betaU[covNamesCompare,'mean']/Xsds[covNamesCompare],main='no teach FE')
-abline(0,1)
-
-dev.off()
-
-round(summ[-grep('Eff|beta',rownames(summ)),c(1:4,8:10)],3)
-
-print(load('fittedModels/raschMod.RData'))
-
-load('data/probPartDat.RData')
-load('data/studDat.RData')
-load('data/flpsDat.RData')
-
-### first try flps
-studDat1=studDat%>%
-  filter(StuID%in%flpsDat$StuID,!is.na(Scale.Score7))%>%
-  arrange(StuID)%>%
-  mutate(
-    stud=as.numeric(as.factor(StuID))
+betaY=
+bind_rows(
+  tibble(terms=c(colnames(sdat$X)),
+  as.data.frame(summObs[grep('betaY',rownames(summObs)),]),
+  model='obs'
+  ),
+    tibble(terms=c(colnames(sdat$X)),
+  as.data.frame(raschsumm[grep('betaY',rownames(raschsumm)),]),
+  model='rasch'
+  ),
+  tibble(terms=c(colnames(sdat$X)),
+  as.data.frame(tplsumm[grep('by',rownames(tplsumm)),]),
+  model='2pl'
+  ),
+  tibble(terms=c(colnames(sdat$X)),
+  as.data.frame(grmsumm[grep('by',rownames(grmsumm)),]),
+  model='grm'
   )
+)%>%mutate(lhs='Y')
 
-### flps dat only IDs that are in studDat1 & new stud id
-flpsDat1=right_join(flpsDat,select(studDat1,StuID,stud))%>%
-    mutate(prob=as.numeric(as.factor(probPart)))
-
-mleEta=ranef(rasch)$StuID[match(as.character(studDat1$StuID),rownames(ranef(rasch)$StuID)),]#[sdat$Z==1],]
-
-pdf('etaCompare.pdf')
-plot(mleEta,summ[paste0('studEff[',1:sdat$nstud,']'),1])#[sdat$Z==1])
-abline(0,1)
-
-plot(mleEta,summ[paste0('studEff[',1:sdat$nstud,']'),1],xlim=c(-3,3),ylim=c(-3,3))
-abline(0,1)
-dev.off()
-
-which(summ[paste0('studEff[',1:sdat$nstud,']'),1][sdat$Z==1]< -3) ### only one problem worked
-
-### ctl and trt etas
-eta0=summ[paste0('studEff[',which(sdat$Z==0),']'),]
-eta1=summ[paste0('studEff[',which(sdat$Z==1),']'),]
-
-eta=as.data.frame(summ[startsWith(rownames(summ),'studEff'),])
-eta$Z=sdat$Z
-
-eta%>%ggplot(aes(as.factor(Z),mean))+geom_boxplot()
-ggsave('plots/studEffByZ.jpg')
-
-eta%>%ggplot(aes(as.factor(Z),sd))+geom_boxplot()
-ggsave('plots/studEffByZsd.jpg')
-
-eta$ftd <- sdat$X%*%betaU[,'mean']
-
-eta[-587,]%>%ggplot(aes(ftd,mean))+geom_point()+geom_smooth(method='lm',se=FALSE)+facet_wrap(~Z,scales='free')
-ggsave('plots/etaByXbetaByZ.jpg',width=10,height=5)
+betaU=
+bind_rows(
+  tibble(terms=c('Int',colnames(sdat$X)),
+  as.data.frame(summObs[grep('betaU',rownames(summObs)),]),
+  model='obs'
+  ),
+    tibble(terms=c(colnames(sdat$X)),
+  as.data.frame(raschsumm[grep('betaU',rownames(raschsumm)),]),
+  model='rasch'
+  ),
+  tibble(terms=c(colnames(sdat$X)),
+  as.data.frame(tplsumm[grep('bu',rownames(tplsumm)),]),
+  model='2pl'
+  ),
+  tibble(terms=c(colnames(sdat$X)),
+  as.data.frame(grmsumm[grep('bu',rownames(grmsumm)),]),
+  model='grm'
+  )
+)%>%mutate(lhs='U')
 
 
-#### problem effects?
-raschProb=ranef(rasch)$probPart
-probCW=distinct(flpsDat1,prob,probPart)%>%arrange(prob)
-pdf('plots/probEffsVSmle.pdf')
-plot(raschProb[match(probCW$probPart,rownames(raschProb)),],
-     summ[paste0('probEff[',probCW$prob,']'),'mean'])
-abline(0,1)
-dev.off()
+bind_rows(betaU,betaY)%>%
+filter(!startsWith(terms,'as.factor(teach)'))%>%
+ggplot(aes(terms,mean,ymin=mean-2*sd,ymax=mean+2*sd,color=model))+
+geom_point(position=position_dodge(width=0.5))+
+geom_errorbar(position=position_dodge(width=0.5),width=0)+
+geom_hline(yintercept=0)+
+facet_wrap(~lhs,scale="free_x")+
+coord_flip()+ theme(text = element_text(size = 30))  
+ggsave("plots/coef.pdf")
+
+
 
 
 
 ###############3
 ### summaries from main model
 #################
-draws <- rstan::extract(flpsRasch1)
+
+draws=rstan::extract(flpsRasch1)
 
 ### for "multImp" and "trtEff"
 set.seed(613)
@@ -181,6 +258,7 @@ Eeta <- colMeans(draws$studEff)
 ##############################
 #### Potential Outcomes Plot
 ###########################
+
 a0 <- rnorm(length(draws$a1),mean(sdat$Y[sdat$Z==0]),sd(sdat$Y[sdat$Z==0])/sqrt(sum(sdat$Z==0)))
 a1 <- draws$a1
 b0 <- draws$b0
@@ -217,6 +295,7 @@ dev.off()
 
 pdMod <- function(mod,row=1,column=1,func){
     draws <- rstan::extract(mod)
+    if('alpha'%in%names(draws)) draws$studEff=draws$alpha
     samp <- seq(1,length(draws$b1),length=1000)
     Usamp <- draws$studEff[samp,]
     iqr <- apply(Usamp,1,IQR)
@@ -248,8 +327,15 @@ pdMod <- function(mod,row=1,column=1,func){
     pd
 }
 
-pdMain <- pdMod(flpsRasch1)
-## pdMain <- within(pdMain,
+effectDat=bind_rows(
+  #pdMod(psObs)%>%mutate(model='Classic')#,
+  pdMod(flpsRasch1)%>%mutate(model='Rasch'),  
+  pdMod(flps2pl)%>%mutate(model='2PL'),
+  pdMod(fit)%>%mutate(model='GRM')
+)%>%mutate(model=factor(model,levels=modelOrd))
+
+pdRasch <- 
+## effectDat <- within(effectDat,
 ## {
 ##     b0 <- b0/pooledSD
 ##     b1 <- b1/pooledSD*iqr
@@ -261,15 +347,117 @@ pdMain <- pdMod(flpsRasch1)
 ## )
 tikz('figure/mainEffects.tex', standAlone=T,
      width=6,height=5)
-print(ggplot(pdMain)+
+#print(
+
+  ggplot(effectDat)+
     geom_abline(aes(intercept=b0,slope=b1,group=id),color='red')+
-    coord_cartesian(xlim=c(min(pdMain$xmin),max(pdMain$xmax)),
-                    ylim=c(min(pdMain$ymin),max(pdMain$ymax)),expand=FALSE)+
+    coord_cartesian(xlim=c(min(effectDat$xmin),max(effectDat$xmax)),
+                    ylim=c(min(effectDat$ymin),max(effectDat$ymax)),expand=FALSE)+
     geom_line(aes(x=x,y=y,group=truthOrAvg,linetype=truthOrAvg,color=truthOrAvg,alpha=truthOrAvg),size=1.5)+
+              geom_hline(yintercept=0)+
     xlab('$\\eta_T$')+ylab('$\\hat{\\tau}(\\eta_T)$')+
     labs(group=NULL,color=NULL,linetype=NULL)+
     scale_color_manual(values=c('black','red','black'))+scale_linetype_manual(values=c('solid','solid','dotted'))+
     scale_alpha_manual(values=c(1,0,1),guide=FALSE)+theme(legend.position='top')+
-    theme(text=element_text(size=15),legend.key.width=unit(.5,'in')))
+    theme(text=element_text(size=15),legend.key.width=unit(.5,'in'))+facet_wrap(~model)
+
+
+
 dev.off()
 setwd('figure'); tools::texi2dvi('mainEffects.tex', pdf = T, clean = T); setwd('..')
+
+
+
+##################################################
+### eta vs outcomes
+##################################################
+
+sdatObs <- with(sdat,
+                list(
+                  ncov=ncov,
+                  nstudT=sum(Z),
+                  nstudC=nstud-sum(Z),
+                  propT=vapply(1:nstud,function(i) mean(firstTry[studentM==i]),.3)[Z==1],
+                  Xt=X[Z==1,],
+                  Xc=X[Z==0,],
+                  Yt=Y[Z==1],
+                  Yc=Y[Z==0]))
+
+drawMb <- which.min(abs(drawsObs$b1-mean(drawsObs$b1)))
+
+plotDatObs <- with(sdatObs,
+  data.frame(
+    Y=c(Yt,Yc),
+    mbar=c(propT,drawsObs$propC[drawMb,]),
+    Z=c(rep(1,nstudT),rep(0,nstudC))
+  )
+)
+
+plotDatObs$treat <- ifelse(plotDatObs$Z==1,'Treatment','Control')
+plotDatObs$slope <- (drawsObs$a1[drawMb]+ifelse(plotDatObs$treat=='Control',0,drawsObs$b1[drawMb]))#/pooledSD
+plotDatObs <- within(
+  plotDatObs,
+  int <- mean(Y[treat=='Control'])-
+          mean(slope[treat=='Control'])*mean(mbar[treat=='Control'])+
+          ifelse(treat=='Control',0,drawsObs$b0[drawMb])
+)
+
+#plotDatObs <- within(plotDatObs, int <- int-( mean(int+slope*mbar)-mean(Y)))
+plotDatObs <- plotDatObs[order(plotDatObs$treat),]
+plotDatObs$treat2 <- plotDatObs$treat
+plotDatObs$model='Classic'
+
+etaYdatFun=function(model,sdat,modelName){
+  draws=rstan::extract(model)
+  drawMb <- which.min(abs(draws$b1-mean(draws$b1)))
+
+  plotDat=with(sdat,
+    data.frame(
+      Y=Y,
+      mbar=if('alpha'%in%names(draws)) draws$alpha[drawMb,] else draws$studEff[drawMb,],
+      treat=ifelse(Z==1,'Treatment','Control'),
+      slope=draws$a1[drawMb]+ifelse(Z==0,0,draws$b1[drawMb]),
+      model=modelName
+    ) 
+  )
+  plotDat <- within(
+    plotDat,
+    int <- mean(Y[treat=='Control'])-
+          mean(slope[treat=='Control'])*mean(mbar[treat=='Control'])+
+          ifelse(treat=='Control',0,draws$b0[drawMb])
+)
+
+  plotDat[order(plotDat$treat),]
+}
+
+etaYdat=bind_rows(
+  plotDatObs,
+  etaYdatFun(flpsRasch1,sdat,'Rasch'),
+  etaYdatFun(flps2pl,sdat,'2PL'),
+  etaYdatFun(fit,sdat,'GRM')
+)
+
+
+
+tikz(file = "figure/etaYModel.tex",
+  standAlone = T,
+  width  = 6, height  = 6)
+print(
+  ggplot(etaYdat,aes(mbar,Y,fill=treat,group=treat,color=treat))+geom_point(size=1)+
+      geom_abline(aes(intercept=int,slope=slope,color=treat),size=2)+
+    scale_colour_manual(values=c('red','blue'))+
+    labs(group=NULL,fill=NULL,alpha=NULL)+xlab('$\\bar{m}_T$')+
+    ylab('Posttest Score')+theme(legend.position='top',text=element_text(size=15))+
+    guides(
+      color = guide_legend(title=NULL,override.aes=list(alpha=1,size=3),keywidth=3),
+      linetype=guide_legend(title=NULL,keywidth=1,override.aes=list(size=1))
+    )+
+    facet_wrap(~model,scales="free_x")
+  )#override.aes=list(size=2)))
+
+dev.off()
+
+
+
+
+###### 
