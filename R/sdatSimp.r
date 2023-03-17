@@ -21,6 +21,8 @@ studDat1=studDat%>%
     stud=as.numeric(as.factor(StuID))
   )
 
+save(studDat1,file='data/studDatAnalysisSample.RData')
+
 Ypsd=studDat1%>%ungroup()%>%group_by(rdm_condition)%>%
     summarize(v=var(Scale.Score7),n=n())%>%
     ungroup()%>%

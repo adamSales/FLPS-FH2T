@@ -3,7 +3,7 @@ library(tidyverse)
 library(splines)
 library(huxtable)
 library(flextable)
-
+library(purrr)
 
 source('R/tableFuncs.r')
 #options(mc.cores = 8)
@@ -83,28 +83,60 @@ huxreg(
 
 
 ### Table 1
-vars = as.data.frame(sdat$X)%>%
-  dplyr::select(-starts_with("as.factor(teach)"))%>%
+
+load('data/studDatAnalysisSample.RData')
+
+#### huh there are 2 extra students in "analysis sample"
+## better figure that out. In the meantime...
+studDat1=studDat1%>%group_by(rdm_condition)%>%slice(-1)%>%ungroup()
+
+studDat=studDat1%>%
   mutate(
-    Z=sdat$Z,
-    Treatment=factor(ifelse(Z==1,'Immediate','Delayed')),
-    `Race/Ethnicity`=factor(
-      ifelse(`raceHispanic/Latino`>0,"Hispanic/Latino",
-      ifelse(raceAsian>0,"Asian",
-      ifelse(raceOther>0,"Other","White"))),
-      levels=c("White","Asian","Hispanic/Latino","Other")),
-      Accelerated=acceleratedTRUE>0,
-      EIP=EIP>0,
-      ESOL=ESOL>0,
-      Gifted=GIFTED>0,
-      IEP=IEP>0,
-      `Days Absent (6th Grd)`=`sqrt(AbsentDays6)`^2,
-      `Avg. Time on Tasks (Pretest)`=exp(`log(pre.avg_time_on_tasks)`),
-      Sex=ifelse(MALE>0,"Male","Female"),
-      Posttest=sdat$Y)%>%
+    Sex=ifelse(MALE>0,"Male","Female"),
+    across(where(~all(.x%in%c(0,1))), ~.x==1),
+    Treatment=factor(ifelse(rdm_condition=='ASSISTments','Immediate','Delayed')),
+    time=pre.avg_time_on_tasks/60,
+    firstTry=ifelse(Treatment=='Immediate',
+      map_dbl(which(sdat$Z==1),~mean(sdat$firstTry[sdat$studentM==.])*100),NA),
+    feedback=ifelse(Treatment=='Immediate',
+      map_dbl(which(sdat$Z==1),~mean(sdat$feedbackOrd[sdat$studentM==.]==2)*100),NA),
+    bottom=ifelse(Treatment=='Immediate',
+      map_dbl(which(sdat$Z==1),~mean(sdat$feedbackOrd[sdat$studentM==.]==3)*100),NA),
+    Posttest=sdat$Y
+    )%>%
     rename(
+      Accelerated=accelerated,
       `5th Grd State Test`=Scale.Score5,
-      Pretest=pre.total_math_score)
+      Pretest=pre.total_math_score,
+      Gifted=GIFTED)
+
+label(studDat$race)="Race/Ethnicity"
+label(studDat$time)="Avg. Time on Tasks (Pretest)"
+label(studDat$AbsentDays6)="Days Absent (6th Grd)"
+label(studDat$pre_MA_total_score)="Math Anxiety"
+label(studDat$pre_PS_tasks_total_score)="Perceptual Sensitivity"
+label(studDat$pre_MSE_total_score)="Math Self-Efficacy"
+label(studDat$firstTry)="% Correct w/o Feedback"
+label(studDat$feedback)="% Partial Feedback"
+label(studDat$bottom)="% Bottom Out"
+
+rndr <- function(x,name, ...) {
+    if(is.numeric(x)){
+      if(name%in%c('pre.avg_time_on_tasks','AbsentDays6')){
+         y <- parse.abbrev.render.code(c("", "Median [Min, Max]"))(x)
+      } else y <- parse.abbrev.render.code(c("", "Mean (SD)"))(x)
+    } else y <- render.default(x, ...)
+    if (is.logical(x)) y[2] else y
+}
+
+
+
+table1(~Pretest+`5th Grd State Test`+Sex+race+Accelerated+EIP+Gifted+IEP+AbsentDays6+time+pre_MA_total_score+pre_MSE_total_score+pre_PS_tasks_total_score+firstTry+feedback+bottom+Posttest|Treatment,data=studDat,render=rndr)%>%
+t1flex("flextable")%>%
+save_as_docx(path="tables/table1.docx")
+
+
+
 
 
 
