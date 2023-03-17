@@ -1,6 +1,8 @@
 library(rstan)
 #library(tidyverse)
 library(dplyr)
+library(ggh4x)
+library(GGally)
 library(lme4)
 library(ggplot2)
 library(tikzDevice)
@@ -20,6 +22,7 @@ tplsumm <- summary(flps2pl)
 tplsumm <- tplsumm$summary
 grmsumm <- summary(fit)
 grmsumm <- grmsumm$summary
+classicsumm <- summary(psObs)$summary
 
 
 
@@ -27,7 +30,9 @@ grmsumm <- grmsumm$summary
 rbind(
     data.frame(rhat=raschsumm[,'Rhat'],model='rasch'),
     data.frame(rhat=tplsumm[,'Rhat'],model='2PL'),
-    data.frame(rhat=grmsumm[,'Rhat'],model='GRM'))%>%
+    data.frame(rhat=grmsumm[,'Rhat'],model='GRM'),
+    data.frame(rhat=classicsumm[,'Rhat'],model='Classic')   
+    )%>%
     group_by(model)%>%mutate(lab=c(paste(n(),'parameters\n',sum(rhat>1.1),'>1.1\n',sum(rhat>1.01),'>1.01'),rep(NA,length(rhat)-1)))%>%
     ggplot(aes(rhat))+geom_histogram(bins=50)+geom_vline(xintercept=c(1.01,1.1))+
     facet_wrap(~model)+geom_label(aes(x=1.03,y=2000,label=lab))
@@ -52,7 +57,7 @@ pd <- bind_rows(
     tibble(est=grmsumm[paste0('gamma[',1:sdat$nprob,']'),'mean'],par='disc.',model='GRM'))%>%
     mutate(model=factor(model,levels=modelOrd))
     
-pdf('plots/studEffs.pdf')
+#pdf('plots/studEffs.pdf')
 
 pStud <- with(sdat,
   vapply(1:nstud,function(i) mean(firstTry[studentM==i]),1.1))
@@ -65,8 +70,12 @@ mutate(id=1:n())%>%
 pivot_wider( id_cols="id",names_from="model",values_from="est")%>%
 bind_cols(prop.correct=pStud)%>%
 select(-id)%>%
-pairs()
-dev.off()
+ggpairs()
+ggsave('plots/studEffs.pdf')
+
+#dev.off()
+
+
 
 nProbDat=pd%>%
 filter(par=="\\eta_T")%>%
@@ -82,6 +91,14 @@ nProbDat%>%
 mutate(fac=factor(paste0(model,' (',par,')'),levels=paste0(modelOrd,' (',c('\\hat{p}',rep('\\eta_T',3)),')')))%>%
 ggplot(aes(nProb,est))+geom_point()+facet_wrap(~fac,scales="free_y")+ theme(text = element_text(size = 30))   
 ggsave('plots/nprobWorked.pdf',width=6.3,height=4)
+
+pd%>%
+filter(par=='\\eta_T')%>%
+select(-par)%>%
+group_by(model)%>%mutate(id=1:n())%>%ungroup()%>%
+pivot_wider(names_from="model",values_from="est")%>%
+select(-id)%>%cor()
+
 
 nProbDat%>%
 summarize(rho=cor(nProb,est,method='spearman'))
@@ -136,7 +153,7 @@ dev.off()
 
 
 ggplot(pd,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=0.1,outlier.shape=NA)+
-    facet_wrap(~model,scales='free_x')+
+    facet_wrap2(~model,scales='free_x',space="free_x")+
     scale_x_discrete(labels=c("\\eta_T"=expression(eta[T]),"d_1"=expression(d[1]),"d_2"=expression(d[2])))+
     theme(text = element_text(size = 30))  
 ggsave('plots/measurementPars.pdf')
