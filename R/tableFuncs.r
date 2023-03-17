@@ -69,8 +69,11 @@ abStand <- function(draws,sdat){
 }
 
 getStuff <- function(draws,sdat,YU){
-  names(draws) <- gsub('studEff|theta','eta',names(draws))
-  names(draws) <- gsub('lambda','betaU',names(draws))
+  names(draws) <- gsub('studEff|theta|alpha','eta',names(draws))
+  names(draws) <- gsub('lambda|bu','betaU',names(draws))
+  names(draws) <- gsub('by','betaY',names(draws))
+  names(draws) <- gsub('sigma_Y','sigY',names(draws))
+
 
 
   if(!length(draws$a0)){

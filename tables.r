@@ -30,11 +30,8 @@ mean(probPartDat1$firstTry)
 
 
 ### load in fitted models
-print(load('fittedModels/gpcm.RData'))
-fitGpcm <- fit
-gpcmDraws <- rstan::extract(fitGpcm)
 
-print(load('fittedModels/grm.RData'))
+print(load('fittedModels/grm2.RData'))
 fitGrm <- fit
 grmDraws <- rstan::extract(fit)
 
@@ -44,7 +41,7 @@ drawsObs <- rstan::extract(psObs)
 print(load('fittedModels/flpsRasch1.RData'))
 raschDraws <- rstan::extract(flpsRasch1)
 
-print(load('fittedModels/flps2pl.RData'))
+print(load('fittedModels/flps2plStan2.RData'))
 tplDraws <- rstan::extract(flps2pl)
 
 load('data/sdatSimp.RData')
@@ -54,7 +51,7 @@ coefNames <- c(
   "omega"="a1",
   "tau0"="b0",
   "tau1"="b1",
-  Male="MALE",
+  Male="MALE"
   )
 
 
@@ -71,15 +68,43 @@ huxreg(
   Rasch=do.call("coefSumm",getStuff(raschDraws,sdat,"U")),
   `2pl`=do.call("coefSumm",getStuff(tplDraws,sdat,"U")),
   #do.call("coefSumm",getStuff(grmDraws,sdat,"Y")),
-  GPCM=do.call("coefSumm",getStuff(gpcmDraws,sdat,"U")) ,statistics=NULL)#,coefs=coefNames)
+  GRM=do.call("coefSumm",getStuff(grmDraws,sdat,"U")) ,statistics=NULL)%>%
+  quick_docx(file='tables/usageReg.docx')
+  #,coefs=coefNames)
 
 
 huxreg(
   Classical=do.call("coefSumm",getStuff(drawsObs,sdatObs,"Y")),
-  do.call("coefSumm",getStuff(raschDraws,sdat,"Y")),
-  do.call("coefSumm",getStuff(tplDraws,sdat,"Y")),
+  Rasch=do.call("coefSumm",getStuff(raschDraws,sdat,"Y")),
+  `2pl`=do.call("coefSumm",getStuff(tplDraws,sdat,"Y")),
   #do.call("coefSumm",getStuff(grmDraws,sdat,"Y")),
-  do.call("coefSumm",getStuff(gpcmDraws,sdat,"Y")) ,statistics=NULL,coefs=coefNames)
-
-%>%
+  GRM=do.call("coefSumm",getStuff(grmDraws,sdat,"Y")) ,statistics=NULL)%>%
   quick_docx(file='tables/outcomeReg.docx')
+
+
+### Table 1
+vars = as.data.frame(sdat$X)%>%
+  dplyr::select(-starts_with("as.factor(teach)"))%>%
+  mutate(
+    Z=sdat$Z,
+    Treatment=factor(ifelse(Z==1,'Immediate','Delayed')),
+    `Race/Ethnicity`=factor(
+      ifelse(`raceHispanic/Latino`>0,"Hispanic/Latino",
+      ifelse(raceAsian>0,"Asian",
+      ifelse(raceOther>0,"Other","White"))),
+      levels=c("White","Asian","Hispanic/Latino","Other")),
+      Accelerated=acceleratedTRUE>0,
+      EIP=EIP>0,
+      ESOL=ESOL>0,
+      Gifted=GIFTED>0,
+      IEP=IEP>0,
+      `Days Absent (6th Grd)`=`sqrt(AbsentDays6)`^2,
+      `Avg. Time on Tasks (Pretest)`=exp(`log(pre.avg_time_on_tasks)`),
+      Sex=ifelse(MALE>0,"Male","Female"),
+      Posttest=sdat$Y)%>%
+    rename(
+      `5th Grd State Test`=Scale.Score5,
+      Pretest=pre.total_math_score)
+
+
+
