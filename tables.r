@@ -1,4 +1,4 @@
-library(tidyverse)
+library(dplyr)
 #library(rstan)
 library(splines)
 library(huxtable)
@@ -9,6 +9,8 @@ source('R/tableFuncs.r')
 #options(mc.cores = 8)
 #rstan_options(auto_write = TRUE)
 
+select <- dplyr::select
+
 load('data/probPartDat.RData')
 load('data/studDat.RData')
 load('data/flpsDat.RData')
@@ -17,16 +19,6 @@ probPartDat1 <- filter(probPartDat,StuID%in%flpsDat$StuID,condition=='ASSISTment
 
 probPartDat1%>%summarize(across(c(ProblemSet,ProblemID,probPart),n_distinct))
 
-
-hist(table(sdat$studentM))
-summary(as.vector(table(sdat$studentM)))
-sd(as.vector(table(sdat$studentM)))
-
-summary(probPartDat1$nerr)
-summary(probPartDat1$nhint)
-
-mean(probPartDat1$nerr==0)
-mean(probPartDat1$firstTry)
 
 
 ### load in fitted models
@@ -53,6 +45,18 @@ coefNames <- c(
   "tau1"="b1",
   Male="MALE"
   )
+
+hist(table(sdat$studentM))
+summary(as.vector(table(sdat$studentM)))
+sd(as.vector(table(sdat$studentM)))
+
+summary(probPartDat1$nerr)
+summary(probPartDat1$nhint)
+
+mean(probPartDat1$nerr==0)
+mean(probPartDat1$firstTry)
+
+
 
 
 ## fix "lambda_adj" for gpcm model
