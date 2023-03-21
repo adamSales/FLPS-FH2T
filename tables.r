@@ -127,7 +127,7 @@ ggplot(aes(x=Percent))+
 geom_histogram(aes(y = after_stat(density)),colour = 1, fill = "white",binwidth=5,boundary=0) +
   geom_density()+#scale_x_continuous(expand=c(0,0))+
   facet_wrap(~feedback,scales="free")+xlab("Percent of Problem Parts, Calculated by Student")
-ggsave("plots/eedbackHistograms.pdf",height=3,width=6)
+ggsave("plots/feedbackHistograms.pdf",height=3,width=6)
 
 
 label(studDat$race)="Race/Ethnicity"
@@ -152,11 +152,9 @@ rndr <- function(x,name, ...) {
 
 
 
-t1<-table1(~Pretest+`5th Grd State Test`+Sex+race+Accelerated+EIP+Gifted+IEP+AbsentDays6+time+pre_MA_total_score+pre_MSE_total_score+pre_PS_tasks_total_score+firstTry+feedback+bottom+Posttest|Treatment,data=studDat,render=rndr)
+t1<-table1(~Pretest+`5th Grd State Test`+Sex+race+Accelerated+EIP+Gifted+IEP+ESOL+AbsentDays6+time+pre_MA_total_score+pre_MSE_total_score+pre_PS_tasks_total_score+firstTry+feedback+bottom+Posttest|Treatment,data=studDat,render=rndr)
 
-
-%>%
-t1flex("flextable")%>%
+t1flex(t1,"flextable")%>%
 save_as_docx(path="tables/table1.docx")
 
 
