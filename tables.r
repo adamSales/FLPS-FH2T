@@ -85,7 +85,7 @@ huxreg(
   Rasch=do.call("coefSumm",getStuff(raschDraws,sdat,"Y")),
   `2pl`=do.call("coefSumm",getStuff(tplDraws,sdat,"Y")),
   #do.call("coefSumm",getStuff(grmDraws,sdat,"Y")),
-  GRM=do.call("coefSumm",getStuff(grmDraws,sdat,"Y")) ,statistics=NULL,error_pos = 'same') %>%
+  GRM=do.call("coefSumm",getStuff(grmDraws,sdat,"Y")) ,statistics=NULL,error_pos = 'right') %>%
   quick_docx(file='tables/outcomeReg.docx')
 
 
