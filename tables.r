@@ -4,6 +4,9 @@ library(splines)
 library(huxtable)
 library(flextable)
 library(purrr)
+library(table1)
+library(tidyr)
+library(ggplot2)
 
 source('R/tableFuncs.r')
 #options(mc.cores = 8)
@@ -38,34 +41,34 @@ tplDraws <- rstan::extract(flps2pl)
 
 load('data/sdatSimp.RData')
 
-coefNames <- c(
-  "beta0"="a0",
-  "omega"="a1",
-  "tau0"="b0",
-  "tau1"="b1",
-  Male="MALE"
-  )
+coefNames=c(
+  acceleratedTRUE="Accelerated",
+  MALE="Male",
+  Scale.Score5="5th Grd State Test",
+  pre.total_math_score="Pretest",
+  GIFTED="Gifted",
+  `log(pre.avg_time_on_tasks)`="Log(Pretest Avg. Time on Tasks)",
+  `sqrt(AbsentDays6)`="sqrt(6th Grd Days Absent)",
+  pre_MA_total_score="Math Anxiety",
+  pre_PS_tasks_total_score="Perceptual Sensitivity",
+  pre_MSE_total_score="Math Self-Efficacy")
 
-hist(table(sdat$studentM))
-summary(as.vector(table(sdat$studentM)))
-sd(as.vector(table(sdat$studentM)))
+for(i in 1:ncol(sdat$X))
+  if(colnames(sdat$X)[i]%in%names(coefNames)){
+    colnames(sdat$X)[i] <- 
+    colnames(sdatObs$Xt)[i] <- 
+    colnames(sdatObs$Xc)[i] <- 
+      coefNames[colnames(sdat$X)[i]]
+  }
 
-summary(probPartDat1$nerr)
-summary(probPartDat1$nhint)
-
-mean(probPartDat1$nerr==0)
-mean(probPartDat1$firstTry)
-
-
+colnames(sdat$X)=gsub("race","",colnames(sdat$X))
+colnames(sdatObs$Xt)=gsub("race","",colnames(sdatObs$Xt))
+colnames(sdatObs$Xc)=gsub("race","",colnames(sdatObs$Xc))
 
 
 ## fix "lambda_adj" for gpcm model
 cent <- colMeans(sdat$X)
 scl <- apply(sdat$X,2,function(x) if(length(unique(x))==2) max(x)-min(x) else sd(x)*2)
-
-gpcmDraws$lambda <- sweep(gpcmDraws$lambda_adj[,-1],2,scl,"*")
-## check:
-all(gpcmDraws$lambda[1,]==unname(gpcmDraws$lambda_adj[1,-1]*scl))
 
 huxreg(
   Classical=do.call("coefSumm",getStuff(drawsObs,sdatObs,"U")),
@@ -114,6 +117,19 @@ studDat=studDat1%>%
       Pretest=pre.total_math_score,
       Gifted=GIFTED)
 
+
+studDat%>%
+filter(Treatment=='Immediate')%>%
+select(firstTry,feedback,bottom)%>%
+pivot_longer(everything(),names_to="feedback",values_to="Percent")%>%
+mutate(feedback=factor(ifelse(feedback=='firstTry','No Feedback',ifelse(feedback=='feedback','Partial Feedback','Bottom Out')),levels=c('No Feedback','Partial Feedback','Bottom Out')))%>%
+ggplot(aes(x=Percent))+
+geom_histogram(aes(y = after_stat(density)),colour = 1, fill = "white",binwidth=5,boundary=0) +
+  geom_density()+#scale_x_continuous(expand=c(0,0))+
+  facet_wrap(~feedback,scales="free")+xlab("Percent of Problem Parts, Calculated by Student")
+ggsave("plots/eedbackHistograms.pdf",height=3,width=6)
+
+
 label(studDat$race)="Race/Ethnicity"
 label(studDat$time)="Avg. Time on Tasks (Pretest)"
 label(studDat$AbsentDays6)="Days Absent (6th Grd)"
@@ -124,10 +140,11 @@ label(studDat$firstTry)="% Correct w/o Feedback"
 label(studDat$feedback)="% Partial Feedback"
 label(studDat$bottom)="% Bottom Out"
 
+
 rndr <- function(x,name, ...) {
     if(is.numeric(x)){
       if(name%in%c('pre.avg_time_on_tasks','AbsentDays6')){
-         y <- parse.abbrev.render.code(c("", "Median [Min, Max]"))(x)
+         y <- parse.abbrev.render.code(c("", "Median [IQR]"))(x)
       } else y <- parse.abbrev.render.code(c("", "Mean (SD)"))(x)
     } else y <- render.default(x, ...)
     if (is.logical(x)) y[2] else y
@@ -135,7 +152,10 @@ rndr <- function(x,name, ...) {
 
 
 
-table1(~Pretest+`5th Grd State Test`+Sex+race+Accelerated+EIP+Gifted+IEP+AbsentDays6+time+pre_MA_total_score+pre_MSE_total_score+pre_PS_tasks_total_score+firstTry+feedback+bottom+Posttest|Treatment,data=studDat,render=rndr)%>%
+t1<-table1(~Pretest+`5th Grd State Test`+Sex+race+Accelerated+EIP+Gifted+IEP+AbsentDays6+time+pre_MA_total_score+pre_MSE_total_score+pre_PS_tasks_total_score+firstTry+feedback+bottom+Posttest|Treatment,data=studDat,render=rndr)
+
+
+%>%
 t1flex("flextable")%>%
 save_as_docx(path="tables/table1.docx")
 
