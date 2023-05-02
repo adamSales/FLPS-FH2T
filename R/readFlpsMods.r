@@ -7,6 +7,7 @@ library(lme4)
 library(ggplot2)
 library(tikzDevice)
 library(tidyr)
+library(ggh4x)
 
 
 
@@ -71,7 +72,7 @@ pivot_wider( id_cols="id",names_from="model",values_from="est")%>%
 bind_cols(prop.correct=pStud)%>%
 select(-id)%>%
 ggpairs()
-ggsave('plots/studEffs.pdf')
+ggsave('plots/studEffs.png')
 
 #dev.off()
 
@@ -153,10 +154,11 @@ dev.off()
 
 
 ggplot(pd,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=0.1,outlier.shape=NA)+
-    facet_wrap2(~model,scales='free_x',space="free_x")+
-    scale_x_discrete(labels=c("\\eta_T"=expression(eta[T]),"d_1"=expression(d[1]),"d_2"=expression(d[2])))+
-    theme(text = element_text(size = 30))  
-ggsave('plots/measurementPars.pdf')
+    facet_grid2(~model,scales='free_x',space="free_x")+
+    scale_x_discrete(name=NULL,labels=c("\\eta_T"=expression(eta[T]),"d_1"=expression(d[1]),"d_2"=expression(d[2])))+
+    theme(text = element_text(size = 30)) +
+    ylab("Posterior Means") 
+ggsave('plots/measurementPars.png')
 
 
 #######################################################
