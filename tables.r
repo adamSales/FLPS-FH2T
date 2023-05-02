@@ -127,7 +127,7 @@ ggplot(aes(x=Percent))+
 geom_histogram(aes(y = after_stat(density)),colour = 1, fill = "white",binwidth=5,boundary=0) +
   geom_density()+#scale_x_continuous(expand=c(0,0))+
   facet_wrap(~feedback,scales="free")+xlab("Percent of Problem Parts, Calculated by Student")
-ggsave("plots/feedbackHistograms.pdf",height=3,width=6)
+ggsave("plots/feedbackHistograms.png",height=3,width=6)
 
 
 label(studDat$race)="Race/Ethnicity"
