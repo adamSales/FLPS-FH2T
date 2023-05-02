@@ -69,10 +69,52 @@ filter(par=="\\eta_T")%>%
 group_by(model)%>%
 mutate(id=1:n())%>%
 pivot_wider( id_cols="id",names_from="model",values_from="est")%>%
-bind_cols(prop.correct=pStud)%>%
+bind_cols(prop.correct=qlogis(pStud))%>%
 select(-id)%>%
+filter(is.finite(prop.correct))%>%
 ggpairs()
 ggsave('plots/studEffs.png')
+
+
+flabs=c(as.character(
+  latex2exp::TeX(paste(c("2PL","GRM"),"$\\eta_T"))),"logit(prop.correct)")
+names(flabs)=c("2PL","GRM","prop.correct")
+
+p=pd%>%
+filter(par=="\\eta_T")%>%
+group_by(model)%>%
+mutate(id=1:n(),model=paste0("\"",model,"  \"*eta"))%>%
+pivot_wider( id_cols="id",names_from="model",values_from="est")%>%
+bind_cols(`logit(prop.correct)`=qlogis(pStud))%>%
+select(-id)%>%
+filter(is.finite(`logit(prop.correct)`))%>%
+pivot_longer(cols=-`\"Rasch  \"*eta`)%>%
+ggplot(aes(`\"Rasch  \"*eta`,value))+geom_point()+
+facet_wrap(~name,labeller=label_parsed)+
+xlab(bquote(Rasch~~eta))
+
+#labeller(name=flabs,parse=TRUE))
+
+rhoDat=pd%>%
+filter(par=="\\eta_T")%>%
+group_by(model)%>%
+mutate(id=1:n(),model=paste0("\"",model,"  \"*eta"))%>%
+pivot_wider( id_cols="id",names_from="model",values_from="est")%>%
+bind_cols(`logit(prop.correct)`=qlogis(pStud))%>%
+select(-id)%>%
+filter(is.finite(`logit(prop.correct)`))%>%
+pivot_longer(cols=-`\"Rasch  \"*eta`)%>%
+group_by(name)%>%
+summarize(rho=round(cor(`\"Rasch  \"*eta`,value),2))
+
+
+
+lab=as.character(latex2exp::TeX(paste0("$\\rho=$",rhoDat$rho)))#expression(rho == 3))
+rhoDat$lab=lab
+p+geom_text(data=rhoDat,aes(x=-1,y=3,label=lab),parse=TRUE)+
+ylab(NULL)
+ggsave("plots/rhoCompare.png",height=3,width=6)
+
 
 #dev.off()
 
@@ -155,7 +197,7 @@ dev.off()
 
 ggplot(pd,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=0.1,outlier.shape=NA)+
     facet_grid2(~model,scales='free_x',space="free_x")+
-    scale_x_discrete(name=NULL,labels=c("\\eta_T"=expression(eta[T]),"d_1"=expression(d[1]),"d_2"=expression(d[2])))+
+    scale_x_discrete(name=NULL,labels=c("\\eta_T"=expression(eta),"d_1"=expression(d[1]),"d_2"=expression(d[2])))+
     theme(text = element_text(size = 30)) +
     ylab("Posterior Means") 
 ggsave('plots/measurementPars.png')
@@ -183,7 +225,7 @@ pd2$par[pd2$par=='disc.'] = 'a'
 
 ggplot(pd2,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=0.1,outlier.shape=NA)+
     facet_wrap(~model,scales='free_x')+
-    scale_x_discrete(labels=c("\\eta_T"=expression(eta[T]),"d_1"=expression(d[1]),"d_2"=expression(d[2])))+
+    scale_x_discrete(labels=c("\\eta_T"=expression(eta),"d_1"=expression(d[1]),"d_2"=expression(d[2])))+
     theme(text = element_text(size = 30))+labs(x=NULL,y="Point Estimates")  
 ggsave('plots/measurementParsSlopeInt.pdf')
 
@@ -298,7 +340,7 @@ YtUp <- apply(Yt,2,function(x) quantile(x,0.975))
 YtDown <- apply(Yt,2,function(x) quantile(x,0.025))
 
 pdf('plots/potentialOutcomes.pdf',width=6,height=6)
-curve(mean(a0)+mean(a1)*x,from=min(xx), to=max(xx),lwd=2,col='red',xlab=expression(eta[T]),ylab=expression(paste('E[',Y[Z],'|',eta[T],']',sep='')),ylim=range(c(YtDown,YcDown,YtUp,YcUp)),cex.lab=1.25)
+curve(mean(a0)+mean(a1)*x,from=min(xx), to=max(xx),lwd=2,col='red',xlab=expression(eta),ylab=expression(paste('E[',Y[Z],'|',eta,']',sep='')),ylim=range(c(YtDown,YcDown,YtUp,YcUp)),cex.lab=1.25)
 
 curve(mean(a0)+mean(b0)+(mean(b1)+mean(a1))*x,add=TRUE,lwd=2,col='blue')
 polygon(c(xx,rev(xx)),c(YcUp,rev(YcDown)),col=adjustcolor('red',0.1))
