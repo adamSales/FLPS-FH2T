@@ -194,7 +194,7 @@ select(-id)%>%
 bind_cols(prop.correct=pProb)%>%pairs()
 dev.off()
 
-tikz('plots/measurementPars.tex',width=6,height=3,standAlone=TRUE)
+tikz('plots/measurementPars.tex',width=6.5,height=3,standAlone=TRUE)
 ggplot(pd,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=0.1,outlier.shape=NA)+
     facet_grid2(~model,scales='free_x',space="free_x")+
     scale_x_discrete(name=NULL,labels=c(
