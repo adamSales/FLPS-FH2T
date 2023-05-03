@@ -293,11 +293,11 @@ ggsave("plots/coef.pdf")
 ### summaries from main model
 #################
 
-draws=rstan::extract(flpsRasch1)
+tplDraws=rstan::extract(flpsRasch1)
 
 ### for "multImp" and "trtEff"
 set.seed(613)
-U <- draws$studEff
+U <- tplDraws$studEff
 Usamp <- U[sample(1:nrow(U),1000),]
 
 ### for sampleSizeEta & etaDiff
@@ -307,23 +307,23 @@ eta <- U[draw,]
 etasd <- apply(U,2,sd)
 
 ### for "usageModel"
-sdEta <- sqrt(mean(apply(draws$studEff,1,var)))
-Eeta <- colMeans(draws$studEff)
+sdEta <- sqrt(mean(apply(tplDraws$studEff,1,var)))
+Eeta <- colMeans(tplDraws$studEff)
 
-#draws$studEff <- Usamp
+#tplDraws$studEff <- Usamp
 
 
-#save(draws,draw,eta,etasd,sdEta,Eeta,summMain,Usamp,file='output/smallMain.RData')
+#save(tplDraws,draw,eta,etasd,sdEta,Eeta,summMain,Usamp,file='output/smallMain.RData')
 
 
 ##############################
 #### Potential Outcomes Plot
 ###########################
 
-a0 <- rnorm(length(draws$a1),mean(sdat$Y[sdat$Z==0]),sd(sdat$Y[sdat$Z==0])/sqrt(sum(sdat$Z==0)))
-a1 <- draws$a1
-b0 <- draws$b0
-b1 <- draws$b1
+a0 <- rnorm(length(tplDraws$a1),mean(sdat$Y[sdat$Z==0]),sd(sdat$Y[sdat$Z==0])/sqrt(sum(sdat$Z==0)))
+a1 <- tplDraws$a1
+b0 <- tplDraws$b0
+b1 <- tplDraws$b1
 
 studEff95 <- quantile(Usamp,c(0.025,0.975))
 xx <- seq(studEff95[1],studEff95[2],length=100)
@@ -339,7 +339,7 @@ Yt <- sweep(Yt,1,a0+b0,'+')
 YtUp <- apply(Yt,2,function(x) quantile(x,0.975))
 YtDown <- apply(Yt,2,function(x) quantile(x,0.025))
 
-pdf('plots/potentialOutcomes.pdf',width=6,height=6)
+png('plots/potentialOutcomes.png')
 curve(mean(a0)+mean(a1)*x,from=min(xx), to=max(xx),lwd=2,col='red',xlab=expression(eta),ylab=expression(paste('E[',Y[Z],'|',eta,']',sep='')),ylim=range(c(YtDown,YcDown,YtUp,YcUp)),cex.lab=1.25)
 
 curve(mean(a0)+mean(b0)+(mean(b1)+mean(a1))*x,add=TRUE,lwd=2,col='blue')
@@ -355,34 +355,34 @@ dev.off()
 
 
 pdMod <- function(mod,row=1,column=1,func){
-    draws <- rstan::extract(mod)
-    if('alpha'%in%names(draws)) draws$studEff=draws$alpha
-    samp <- seq(1,length(draws$b1),length=1000)
-    Usamp <- draws$studEff[samp,]
+    tplDraws <- rstan::extract(mod)
+    if('alpha'%in%names(tplDraws)) tplDraws$studEff=tplDraws$alpha
+    samp <- seq(1,length(tplDraws$b1),length=1000)
+    Usamp <- tplDraws$studEff[samp,]
     iqr <- apply(Usamp,1,IQR)
     studEff95 <- quantile(Usamp,c(0.025,0.975))
     Usamp[Usamp<studEff95[1] | Usamp>studEff95[2]] <- NA
-    trtEff <- sweep(sweep(Usamp,1,draws$b1[samp],'*'),1,draws$b0[samp],'+')
+    trtEff <- sweep(sweep(Usamp,1,tplDraws$b1[samp],'*'),1,tplDraws$b0[samp],'+')
 
 
 
     if(missing(func)){
-        func <- function(x) mean(draws$b0)+mean(draws$b1)*x
+        func <- function(x) mean(tplDraws$b0)+mean(tplDraws$b1)*x
         knownTruth <- FALSE
     } else knownTruth <- TRUE
     truth <- curve(func,from=studEff95[1],to=studEff95[2],n=length(samp)/3)
-    avg <- curve(mean(draws$b0)+x*mean(draws$b1),
+    avg <- curve(mean(tplDraws$b0)+x*mean(tplDraws$b1),
                  from=studEff95[1],to=studEff95[2],n=length(samp)/3)
-    postDraw <- curve(mean(draws$b0)+x*mean(draws$b1),
+    postDraw <- curve(mean(tplDraws$b0)+x*mean(tplDraws$b1),
                       from=studEff95[1],to=studEff95[2],n=length(samp)-length(truth$x)-length(avg$x))
     x <- c(postDraw$x,truth$x,avg$x)
     y <- c(postDraw$y,truth$y,avg$y)
-    if(knownTruth) truthOrAvg <- c(rep('Posterior\nDraws',length(postDraw$x)),rep('True\nEffect',length(truth$x)),rep('Posterior\nAverage',length(avg$x))) else
-     truthOrAvg <- c(rep('Posterior\nDraws',length(postDraw$x)),rep('Posterior\nAverage',length(avg$x)+length(truth$x)))
+    if(knownTruth) truthOrAvg <- c(rep('Posterior\ntplDraws',length(postDraw$x)),rep('True\nEffect',length(truth$x)),rep('Posterior\nAverage',length(avg$x))) else
+     truthOrAvg <- c(rep('Posterior\ntplDraws',length(postDraw$x)),rep('Posterior\nAverage',length(avg$x)+length(truth$x)))
 
 #    if(knownTruth) title <- paste('True Effe
 
-    pd <- data.frame(b0=draws$b0[samp],b1=draws$b1[samp],id=1:length(samp),row=row,column=column,xmin=studEff95[1],xmax=studEff95[2],ymin=min(trtEff,na.rm=T),ymax=max(trtEff,na.rm=T),x=x,y=y,
+    pd <- data.frame(b0=tplDraws$b0[samp],b1=tplDraws$b1[samp],id=1:length(samp),row=row,column=column,xmin=studEff95[1],xmax=studEff95[2],ymin=min(trtEff,na.rm=T),ymax=max(trtEff,na.rm=T),x=x,y=y,
                      truthOrAvg=truthOrAvg,
                      iqr=iqr)
     pd
@@ -406,7 +406,7 @@ pdRasch <-
 ##     ymax <- ymax/pooledSD
 ## }
 ## )
-tikz('figure/mainEffects.tex', standAlone=T,
+tikz('plots/mainEffects.tex', standAlone=T,
      width=6,height=5)
 #print(
 
@@ -469,15 +469,15 @@ plotDatObs$treat2 <- plotDatObs$treat
 plotDatObs$model='Classic'
 
 etaYdatFun=function(model,sdat,modelName){
-  draws=rstan::extract(model)
-  drawMb <- which.min(abs(draws$b1-mean(draws$b1)))
+  tplDraws=rstan::extract(model)
+  drawMb <- which.min(abs(tplDraws$b1-mean(tplDraws$b1)))
 
   plotDat=with(sdat,
     data.frame(
       Y=Y,
-      mbar=if('alpha'%in%names(draws)) draws$alpha[drawMb,] else draws$studEff[drawMb,],
+      mbar=if('alpha'%in%names(tplDraws)) tplDraws$alpha[drawMb,] else tplDraws$studEff[drawMb,],
       treat=ifelse(Z==1,'Treatment','Control'),
-      slope=draws$a1[drawMb]+ifelse(Z==0,0,draws$b1[drawMb]),
+      slope=tplDraws$a1[drawMb]+ifelse(Z==0,0,tplDraws$b1[drawMb]),
       model=modelName
     ) 
   )
@@ -485,7 +485,7 @@ etaYdatFun=function(model,sdat,modelName){
     plotDat,
     int <- mean(Y[treat=='Control'])-
           mean(slope[treat=='Control'])*mean(mbar[treat=='Control'])+
-          ifelse(treat=='Control',0,draws$b0[drawMb])
+          ifelse(treat=='Control',0,tplDraws$b0[drawMb])
 )
 
   plotDat[order(plotDat$treat),]
@@ -498,16 +498,16 @@ etaYdat=bind_rows(
   etaYdatFun(fit,sdat,'GRM')
 )
 
+etaYdat$model=factor(etaYdat$model,levels=modelOrd)
 
-
-tikz(file = "figure/etaYModel.tex",
+tikz(file = "plots/etaYModel.tex",
   standAlone = T,
   width  = 6, height  = 6)
 print(
   ggplot(etaYdat,aes(mbar,Y,fill=treat,group=treat,color=treat))+geom_point(size=1)+
       geom_abline(aes(intercept=int,slope=slope,color=treat),size=2)+
     scale_colour_manual(values=c('red','blue'))+
-    labs(group=NULL,fill=NULL,alpha=NULL)+xlab('$\\bar{m}_T$')+
+    labs(group=NULL,fill=NULL,alpha=NULL)+xlab('$\\eta_T$')+
     ylab('Posttest Score')+theme(legend.position='top',text=element_text(size=15))+
     guides(
       color = guide_legend(title=NULL,override.aes=list(alpha=1,size=3),keywidth=3),
