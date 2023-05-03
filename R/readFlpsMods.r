@@ -200,7 +200,7 @@ ggplot(pd,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=
     scale_x_discrete(name=NULL,labels=c("\\eta_T"=expression(eta),"d_1"=expression(d[1]),"d_2"=expression(d[2])))+
     theme(text = element_text(size = 30)) +
     ylab("Posterior Means") 
-ggsave('plots/measurementPars.png')
+ggsave('plots/measurementPars.png', width=6,height=3)
 
 
 #######################################################
