@@ -41,6 +41,9 @@ tplDraws <- rstan::extract(flps2pl)
 
 load('data/sdatSimp.RData')
 
+modelOrd=c('Classic','Rasch','2PL','GRM')
+
+
 coefNames=c(
   acceleratedTRUE="Accelerated",
   MALE="Male",
@@ -162,3 +165,30 @@ save_as_docx(path="tables/table1.docx")
 
 
 
+### r^2 from measurement model
+
+r2=function(draws,Xmat){
+  
+  if("betaU"%in%names(draws)){
+    betaU=draws$betaU
+    sigU=draws$sigU
+  } else{
+    betaU=draws$bu
+    sigU=1
+  }
+
+  varXBeta=apply(betaU%*%t(Xmat),1,var)
+  R2=varXBeta/(varXBeta+sigU^2)
+  c(mean(R2),median(R2),sd(R2))
+}
+
+r2tab=setNames(
+  lapply(
+    list(drawsObs,raschDraws,tplDraws,grmDraws),
+    r2,Xmat=sdat$X),
+  modelOrd)
+
+r2tab=as.data.frame(r2tab)[1,]
+rownames(r2tab)="$R^2$"
+
+knitr::kable(r2tab,row.names=TRUE)
