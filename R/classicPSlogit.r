@@ -18,6 +18,6 @@ sdatObs <- with(sdat,
                   Yc=Y[Z==0]))
 
 sdatObs$propT[sdatObs$propT==Inf]=max(sdatObs$propT[is.finite(sdatObs$propT)])
-
+sdatObs$propT=scale(sdatObs$propT)[,1]
 psObs <- stan('R/classicPSlogit.stan',data=sdatObs,chains=8,iter=3000,warmup=1000)
 save(sdatObs,psObs,file='fittedModels/classicPSlogit.RData')
