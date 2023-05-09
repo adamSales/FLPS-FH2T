@@ -12,7 +12,7 @@ library(ggh4x)
 
 
 
-load('fittedModels/classicPSorig.RData')
+print(load('fittedModels/classicPSlogit.RData'))
 load('fittedModels/flpsRasch1.RData')
 load('fittedModels/flps2plStan2.RData')
 load('fittedModels/grm2.RData')
@@ -144,17 +144,6 @@ Eeta <- colMeans(tplDraws$studEff)
 ##################################################
 
 drawsObs <- rstan::extract(psObs)
-
-sdatObs <- with(sdat,
-                list(
-                  ncov=ncov,
-                  nstudT=sum(Z),
-                  nstudC=nstud-sum(Z),
-                  propT=vapply(1:nstud,function(i) mean(firstTry[studentM==i]),.3)[Z==1],
-                  Xt=X[Z==1,],
-                  Xc=X[Z==0,],
-                  Yt=Y[Z==1],
-                  Yc=Y[Z==0]))
 
 drawMb <- which.min(abs(drawsObs$b1-mean(drawsObs$b1)))
 

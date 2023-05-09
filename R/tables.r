@@ -30,7 +30,7 @@ print(load('fittedModels/grm2.RData'))
 fitGrm <- fit
 grmDraws <- rstan::extract(fit)
 
-print(load('fittedModels/classicPS.RData'))
+print(load('fittedModels/classicPSlogit.RData'))
 drawsObs <- rstan::extract(psObs)
 
 print(load('fittedModels/flpsRasch1.RData'))
@@ -94,11 +94,11 @@ huxreg(
 
 ### Table 1
 
-load('data/studDatAnalysisSample.RData')
+print(load('data/studDatAnalysisSample.RData'))
 
 #### huh there are 2 extra students in "analysis sample"
 ## better figure that out. In the meantime...
-studDat1=studDat1%>%group_by(rdm_condition)%>%slice(-1)%>%ungroup()
+#studDat1=studDat1%>%group_by(rdm_condition)%>%slice(-1)%>%ungroup()
 
 studDat=studDat1%>%
   mutate(

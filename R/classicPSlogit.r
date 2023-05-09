@@ -11,11 +11,13 @@ sdatObs <- with(sdat,
                   ncov=ncov,
                   nstudT=sum(Z),
                   nstudC=nstud-sum(Z),
-                  propT=plogis(vapply(1:nstud,function(i) mean(firstTry[studentM==i]),.3)[Z==1]),
+                  propT=qlogis(vapply(1:nstud,function(i) mean(firstTry[studentM==i]),.3)[Z==1]),
                   Xt=X[Z==1,],
                   Xc=X[Z==0,],
                   Yt=Y[Z==1],
                   Yc=Y[Z==0]))
 
-psObs <- stan('R/classicPSlogit.stan',data=sdatObs,chains=8)
-save(sdatObs,psObs,file='fittedModels/classicPS.RData')
+sdatObs$propT[sdatObs$propT==Inf]=max(sdatObs$propT[is.finite(sdatObs$propT)])
+
+psObs <- stan('R/classicPSlogit.stan',data=sdatObs,chains=8,iter=3000,warmup=1000)
+save(sdatObs,psObs,file='fittedModels/classicPSlogit.RData')

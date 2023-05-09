@@ -24,7 +24,7 @@ parameters{
  real b0;
  real b1;
 
- vector<lower=0,upper=1>[nstudC] propC;
+ vector[nstudC] propC;
 
  real<lower=0> sigY;//[2];
  real<lower=0> sigU;
