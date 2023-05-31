@@ -43,8 +43,8 @@ varComps <- function(coefdraws,sigdraws,X,out){
   coefSigV <- mean(apply(coefdraws%*%t(X),1,var))
   teachCols <- grep('as.factor(teach)',colnames(X),fixed=TRUE)
   teachV <- mean(apply(coefdraws[,teachCols]%*%t(X[,teachCols]),1,var))
-  R2all <- coefSigV/(coefSigV+residVar)#varTot
-  R2teach <- teachV/(coefSigV+residVar)#varTot
+  R2all <- coefSigV/(coefSigV+residVar)
+  R2teach <- teachV/(coefSigV+residVar)
   list(sdTot=sqrt(varTot),
        sdResid=sqrt(residVar),
        sdTeach=sqrt(teachV),

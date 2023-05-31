@@ -73,24 +73,64 @@ colnames(sdatObs$Xc)=gsub("race","",colnames(sdatObs$Xc))
 cent <- colMeans(sdat$X)
 scl <- apply(sdat$X,2,function(x) if(length(unique(x))==2) max(x)-min(x) else sd(x)*2)
 
-huxreg(
+ur=huxreg(
   Classical=do.call("coefSumm",getStuff(drawsObs,sdatObs,"U")),
   Rasch=do.call("coefSumm",getStuff(raschDraws,sdat,"U")),
   `2pl`=do.call("coefSumm",getStuff(tplDraws,sdat,"U")),
   #do.call("coefSumm",getStuff(grmDraws,sdat,"Y")),
-  GRM=do.call("coefSumm",getStuff(grmDraws,sdat,"U")) ,statistics=NULL)%>%
-  quick_docx(file='tables/usageReg.docx')
+  GRM=do.call("coefSumm",getStuff(grmDraws,sdat,"U")) ,statistics=NULL)#%>%
+#  quick_latex(file='tables/usageReg.tex')
+  #quick_docx(file='tables/usageReg.docx')
   #,coefs=coefNames)
 
+urd=as.data.frame(ur[c(1:33,36,39,nrow(ur)),])
+for(i in 2:(nrow(urd)-1)) for(j in 2:ncol(urd)){
+  num=round(as.numeric(gsub("[\\*\\)\\(]","",urd[i,j])),3)
+  urd[i,j]=gsub("(\\(?)([0-9\\.]+)([\\) \\*]*)",paste0("\\1",num,"\\3"),urd[i,j])
+}
+urd[34:35,1]=c("$\\sigma_U$","$R^2$")
+urd[nrow(urd),]=c(paste("\\multicolumn{5}{l}{",urd[nrow(urd),1],"}"),rep("",4))
 
-huxreg(
+print(xtable(urd),floating=F,hline.after=c(-1,1,nrow(urd)-3,nrow(urd)-1),include.rownames=F,include.colnames=F,sanitize.text.function=function(x) x,
+file='tables/usageReg.tex')
+
+
+
+ot=huxreg(
   Classical=do.call("coefSumm",getStuff(drawsObs,sdatObs,"Y")),
   Rasch=do.call("coefSumm",getStuff(raschDraws,sdat,"Y")),
   `2pl`=do.call("coefSumm",getStuff(tplDraws,sdat,"Y")),
   #do.call("coefSumm",getStuff(grmDraws,sdat,"Y")),
-  GRM=do.call("coefSumm",getStuff(grmDraws,sdat,"Y")) ,statistics=NULL,error_pos = 'right') %>%
-  quick_docx(file='tables/outcomeReg.docx')
+  GRM=do.call("coefSumm",getStuff(grmDraws,sdat,"Y")) ,statistics=NULL)
+  
+otr=as.data.frame(ot[c(1,4:9,47,nrow(ot)),])
+for(i in 2:(nrow(otr)-1)) for(j in 2:ncol(otr)){
+  num=round(as.numeric(gsub("[\\*\\)\\(]","",otr[i,j])),3)
+  otr[i,j]=gsub("(\\(?)([0-9\\.]+)([\\) \\*]*)",paste0("\\1",num,"\\3"),otr[i,j])
+}
 
+otr[,1]=gsub('a1','$\\\\omega$',otr[,1])
+otr[,1]=gsub('b0','$\\\\tau_0$',otr[,1])
+otr[,1]=gsub('b1','$\\\\tau_1$',otr[,1])
+otr[,1]=gsub('R2all','$R^2$',otr[,1])
+otr[1,3]="2PL"
+
+otr[nrow(otr),]=c(paste("\\multicolumn{5}{l}{",otr[nrow(otr),1],"}"),rep("",4))
+
+
+print(xtable(otr),floating=F,hline.after=c(-1,1,nrow(otr)-2,nrow(otr)-1),include.rownames=F,include.colnames=F,sanitize.text.function=function(x) x,
+file='tables/outcomeRegSmall.tex')
+
+
+
+CIs=map(list(Classical=drawsObs,Rasch=raschDraws,`2pl`=tplDraws,GRM=grmDraws),
+  function(x)  map_dfr(c('b0','b1'),function(y) data.frame(
+    parm=y,
+    normL=mean(x[[y]])-2*sd(x[[y]]),
+    normH=mean(x[[y]])+2*sd(x[[y]]),
+    qL=quantile(x[[y]],0.025),
+    qH=quantile(x[[y]],0.975))))
+    
 
 ### Table 1
 
@@ -146,7 +186,7 @@ label(studDat$bottom)="% Bottom Out"
 
 rndr <- function(x,name, ...) {
     if(is.numeric(x)){
-      if(name%in%c('pre.avg_time_on_tasks','AbsentDays6')){
+      if(name%in%c('time','AbsentDays6')){
          y <- parse.abbrev.render.code(c("", "Median [IQR]"))(x)
       } else y <- parse.abbrev.render.code(c("", "Mean (SD)"))(x)
     } else y <- render.default(x, ...)
@@ -156,6 +196,10 @@ rndr <- function(x,name, ...) {
 
 
 t1<-table1(~Pretest+`5th Grd State Test`+Sex+race+Accelerated+EIP+Gifted+IEP+ESOL+AbsentDays6+time+pre_MA_total_score+pre_MSE_total_score+pre_PS_tasks_total_score+firstTry+feedback+bottom+Posttest|Treatment,data=studDat,render=rndr)
+
+sink('tables/table1.tex')
+t1kable(t1,format='latex')
+sink()
 
 t1flex(t1,"flextable")%>%
 save_as_docx(path="tables/table1.docx")
@@ -192,3 +236,8 @@ r2tab=as.data.frame(r2tab)[1,]
 rownames(r2tab)="$R^2$"
 
 knitr::kable(r2tab,row.names=TRUE)
+
+
+probPos=lapply(
+    list(drawsObs,raschDraws,tplDraws,grmDraws),
+    function(x) mean(x$b1>0))
