@@ -4,9 +4,12 @@ library(splines)
 library(huxtable)
 library(flextable)
 library(purrr)
-library(table1)
+#library(table1)
 library(tidyr)
 library(ggplot2)
+library(xtable)
+library(table1)
+
 
 source('R/tableFuncs.r')
 #options(mc.cores = 8)
@@ -30,8 +33,8 @@ print(load('fittedModels/grm2.RData'))
 fitGrm <- fit
 grmDraws <- rstan::extract(fit)
 
-print(load('fittedModels/classicPSlogit.RData'))
-drawsObs <- rstan::extract(psObs)
+#print(load('fittedModels/classicPSlogit.RData'))
+#drawsObs <- rstan::extract(psObs)
 
 print(load('fittedModels/flpsRasch1.RData'))
 raschDraws <- rstan::extract(flpsRasch1)
@@ -74,7 +77,7 @@ cent <- colMeans(sdat$X)
 scl <- apply(sdat$X,2,function(x) if(length(unique(x))==2) max(x)-min(x) else sd(x)*2)
 
 ur=huxreg(
-  Classical=do.call("coefSumm",getStuff(drawsObs,sdatObs,"U")),
+  #Classical=do.call("coefSumm",getStuff(drawsObs,sdatObs,"U")),
   Rasch=do.call("coefSumm",getStuff(raschDraws,sdat,"U")),
   `2pl`=do.call("coefSumm",getStuff(tplDraws,sdat,"U")),
   #do.call("coefSumm",getStuff(grmDraws,sdat,"Y")),
@@ -97,7 +100,7 @@ file='tables/usageReg.tex')
 
 
 ot=huxreg(
-  Classical=do.call("coefSumm",getStuff(drawsObs,sdatObs,"Y")),
+  #Classical=do.call("coefSumm",getStuff(drawsObs,sdatObs,"Y")),
   Rasch=do.call("coefSumm",getStuff(raschDraws,sdat,"Y")),
   `2pl`=do.call("coefSumm",getStuff(tplDraws,sdat,"Y")),
   #do.call("coefSumm",getStuff(grmDraws,sdat,"Y")),

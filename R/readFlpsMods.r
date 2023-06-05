@@ -12,7 +12,7 @@ library(ggh4x)
 
 
 
-print(load('fittedModels/classicPSlogit.RData'))
+#print(load('fittedModels/classicPSlogit.RData'))
 load('fittedModels/flpsRasch1.RData')
 load('fittedModels/flps2plStan2.RData')
 load('fittedModels/grm2.RData')
@@ -23,7 +23,7 @@ tplsumm <- summary(flps2pl)
 tplsumm <- tplsumm$summary
 grmsumm <- summary(fit)
 grmsumm <- grmsumm$summary
-classicsumm <- summary(psObs)$summary
+#classicsumm <- summary(psObs)$summary
 
 
 
@@ -31,8 +31,8 @@ classicsumm <- summary(psObs)$summary
 rbind(
     data.frame(rhat=raschsumm[,'Rhat'],model='rasch'),
     data.frame(rhat=tplsumm[,'Rhat'],model='2PL'),
-    data.frame(rhat=grmsumm[,'Rhat'],model='GRM'),
-    data.frame(rhat=classicsumm[,'Rhat'],model='Classic')   
+    data.frame(rhat=grmsumm[,'Rhat'],model='GRM')#,
+    #data.frame(rhat=classicsumm[,'Rhat'],model='Classic')   
     )%>%
     group_by(model)%>%mutate(lab=c(paste(n(),'parameters\n',sum(rhat>1.1),'>1.1\n',sum(rhat>1.01),'>1.01'),rep(NA,length(rhat)-1)))%>%
     ggplot(aes(rhat))+geom_histogram(bins=50)+geom_vline(xintercept=c(1.01,1.1))+
@@ -68,37 +68,40 @@ pStud <- with(sdat,
 p=pd%>%
 filter(par=="\\eta_T")%>%
 group_by(model)%>%
-mutate(id=1:n(),model=paste0("\"",model,"  \"*eta"))%>%
+mutate(id=1:n(),model=paste(model,"$\\eta_T$"))%>%
 pivot_wider( id_cols="id",names_from="model",values_from="est")%>%
-bind_cols(`logit(prop.correct)`=qlogis(pStud))%>%
+bind_cols(prop.correct=pStud)%>%
 select(-id)%>%
-filter(is.finite(`logit(prop.correct)`))%>%
-pivot_longer(cols=-`\"Rasch  \"*eta`)%>%
-ggplot(aes(`\"Rasch  \"*eta`,value))+geom_point()+
-facet_wrap(~name,labeller=label_parsed)+
-xlab(bquote(Rasch~~eta))
+#filter(is.finite(`logit(prop.correct)`))%>%
+pivot_longer(cols=-`Rasch $\\eta_T$`)%>%
+ggplot(aes(`Rasch $\\eta_T$`,value))+geom_point()+
+facet_wrap(~name,#labeller=label_parsed,
+  scales="free")+
+xlab("Rasch $\\eta_T$")
 
 
 rhoDat=pd%>%
 filter(par=="\\eta_T")%>%
 group_by(model)%>%
-mutate(id=1:n(),model=paste0("\"",model,"  \"*eta"))%>%
+mutate(id=1:n(),model=paste(model,"$\\eta_T$"))%>%
 pivot_wider( id_cols="id",names_from="model",values_from="est")%>%
-bind_cols(`logit(prop.correct)`=qlogis(pStud))%>%
+bind_cols(prop.correct=pStud)%>%
+#bind_cols(`logit(prop.correct)`=qlogis(pStud))%>%
 select(-id)%>%
-filter(is.finite(`logit(prop.correct)`))%>%
-pivot_longer(cols=-`\"Rasch  \"*eta`)%>%
+#filter(is.finite(`logit(prop.correct)`))%>%
+pivot_longer(cols=-`Rasch $\\eta_T$`)%>%
 group_by(name)%>%
-summarize(rho=round(cor(`\"Rasch  \"*eta`,value),2))
+summarize(rho=round(cor(`Rasch $\\eta_T$`,value,use='pairwise'),2),y=max(value,na.rm=TRUE),x=-1)
 
 
+tikz('plots/rhoCompare.tex',width=6.5,height=3,standAlone=TRUE)
 
-lab=as.character(latex2exp::TeX(paste0("$\\rho=$",rhoDat$rho)))#expression(rho == 3))
-rhoDat$lab=lab
-p+geom_text(data=rhoDat,aes(x=-1,y=3,label=lab),parse=TRUE)+
+#lab=as.character(latex2exp::TeX(paste0("$\\rho=$",rhoDat$rho)))#expression(rho == 3))
+rhoDat$lab=paste0("$\\rho=$",rhoDat$rho)
+p+geom_text(data=rhoDat,aes(x=x,y=y,label=lab))+#,parse=TRUE)+
 ylab(NULL)
-ggsave("plots/rhoCompare.png",height=3,width=6)
-
+#ggsave("plots/rhoCompare.png",height=3,width=6)
+dev.off()
 
 #dev.off()
 
@@ -115,59 +118,12 @@ ggplot(pd,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=
 dev.off()
 
 
-tplDraws=rstan::extract(flpsRasch1)
-
-### for "multImp" and "trtEff"
-set.seed(613)
-U <- tplDraws$studEff
-Usamp <- U[sample(1:nrow(U),1000),]
-
-### for sampleSizeEta & etaDiff
-draw <- 1000
-U <- U[,sort(unique(sdat$studentM))]
-eta <- U[draw,]
-etasd <- apply(U,2,sd)
-
-### for "usageModel"
-sdEta <- sqrt(mean(apply(tplDraws$studEff,1,var)))
-Eeta <- colMeans(tplDraws$studEff)
-
-#tplDraws$studEff <- Usamp
-
-
-#save(tplDraws,draw,eta,etasd,sdEta,Eeta,summMain,Usamp,file='output/smallMain.RData')
-
 
 
 ##################################################
 ### eta vs outcomes
 ##################################################
 
-drawsObs <- rstan::extract(psObs)
-
-drawMb <- which.min(abs(drawsObs$b1-mean(drawsObs$b1)))
-
-plotDatObs <- with(sdatObs,
-  data.frame(
-    Y=c(Yt,Yc),
-    mbar=c(propT,drawsObs$propC[drawMb,]),
-    Z=c(rep(1,nstudT),rep(0,nstudC))
-  )
-)
-
-plotDatObs$treat <- ifelse(plotDatObs$Z==1,'Treatment','Control')
-plotDatObs$slope <- (drawsObs$a1[drawMb]+ifelse(plotDatObs$treat=='Control',0,drawsObs$b1[drawMb]))#/pooledSD
-plotDatObs <- within(
-  plotDatObs,
-  int <- mean(Y[treat=='Control'])-
-          mean(slope[treat=='Control'])*mean(mbar[treat=='Control'])+
-          ifelse(treat=='Control',0,drawsObs$b0[drawMb])
-)
-
-#plotDatObs <- within(plotDatObs, int <- int-( mean(int+slope*mbar)-mean(Y)))
-plotDatObs <- plotDatObs[order(plotDatObs$treat),]
-plotDatObs$treat2 <- plotDatObs$treat
-plotDatObs$model='Classic'
 
 etaYdatFun=function(model,sdat,modelName){
   tplDraws=rstan::extract(model)
@@ -193,7 +149,7 @@ etaYdatFun=function(model,sdat,modelName){
 }
 
 etaYdat=bind_rows(
-  plotDatObs,
+#  plotDatObs,
   etaYdatFun(flpsRasch1,sdat,'Rasch'),
   etaYdatFun(flps2pl,sdat,'2PL'),
   etaYdatFun(fit,sdat,'GRM')
