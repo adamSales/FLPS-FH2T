@@ -94,7 +94,7 @@ group_by(name)%>%
 summarize(rho=round(cor(`Rasch $\\eta_T$`,value,use='pairwise'),2),y=max(value,na.rm=TRUE),x=-1)
 
 
-tikz('plots/rhoCompare.tex',width=6.5,height=3,standAlone=TRUE)
+tikz('plots/rhoCompare.tex',width=6.5,height=3,standAlone=FALSE)
 
 #lab=as.character(latex2exp::TeX(paste0("$\\rho=$",rhoDat$rho)))#expression(rho == 3))
 rhoDat$lab=paste0("$\\rho=$",rhoDat$rho)
@@ -107,7 +107,7 @@ dev.off()
 
 #dev.off()
 
-tikz('plots/measurementPars.tex',width=6.5,height=3,standAlone=TRUE)
+tikz('plots/measurementPars.tex',width=6.5,height=3,standAlone=FALSE)
 ggplot(pd,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=0.1,outlier.shape=NA)+
     facet_grid2(~model,scales='free_x',space="free_x")+
     scale_x_discrete(name=NULL,labels=c(
@@ -160,7 +160,7 @@ etaYdat=bind_rows(
 etaYdat$model=factor(etaYdat$model,levels=modelOrd)
 
 tikz(file = "plots/etaYModel.tex",
-  standAlone = T,
+  standAlone = FALSE,
   width  = 6, height  = 6)
 print(
   ggplot(etaYdat,aes(mbar,Y,fill=treat,group=treat,color=treat))+geom_point(size=1)+
