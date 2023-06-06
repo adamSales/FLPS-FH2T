@@ -98,8 +98,10 @@ tikz('plots/rhoCompare.tex',width=6.5,height=3,standAlone=TRUE)
 
 #lab=as.character(latex2exp::TeX(paste0("$\\rho=$",rhoDat$rho)))#expression(rho == 3))
 rhoDat$lab=paste0("$\\rho=$",rhoDat$rho)
-p+geom_text(data=rhoDat,aes(x=x,y=y,label=lab))+#,parse=TRUE)+
+print(
+  p+geom_text(data=rhoDat,aes(x=x,y=y,label=lab))+#,parse=TRUE)+
 ylab(NULL)
+)
 #ggsave("plots/rhoCompare.png",height=3,width=6)
 dev.off()
 
