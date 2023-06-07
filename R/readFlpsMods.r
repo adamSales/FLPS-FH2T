@@ -161,7 +161,7 @@ etaYdat$model=factor(etaYdat$model,levels=modelOrd)
 
 tikz(file = "plots/etaYModel.tex",
   standAlone = FALSE,
-  width  = 6, height  = 6)
+  width  = 6, height  = 3)
 print(
   ggplot(etaYdat,aes(mbar,Y,fill=treat,group=treat,color=treat))+geom_point(size=1)+
       geom_abline(aes(intercept=int,slope=slope,color=treat),size=2)+

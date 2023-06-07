@@ -68,8 +68,8 @@ for(i in 1:ncol(sdat$X))
   }
 
 colnames(sdat$X)=gsub("race","",colnames(sdat$X))
-colnames(sdatObs$Xt)=gsub("race","",colnames(sdatObs$Xt))
-colnames(sdatObs$Xc)=gsub("race","",colnames(sdatObs$Xc))
+#colnames(sdatObs$Xt)=gsub("race","",colnames(sdatObs$Xt))
+#colnames(sdatObs$Xc)=gsub("race","",colnames(sdatObs$Xc))
 
 
 ## fix "lambda_adj" for gpcm model
@@ -104,22 +104,31 @@ ot=huxreg(
   Rasch=do.call("coefSumm",getStuff(raschDraws,sdat,"Y")),
   `2pl`=do.call("coefSumm",getStuff(tplDraws,sdat,"Y")),
   #do.call("coefSumm",getStuff(grmDraws,sdat,"Y")),
-  GRM=do.call("coefSumm",getStuff(grmDraws,sdat,"Y")) ,statistics=NULL)
-  
-otr=as.data.frame(ot[c(1,4:9,47,nrow(ot)),])
-for(i in 2:(nrow(otr)-1)) for(j in 2:ncol(otr)){
+  GRM=do.call("coefSumm",getStuff(grmDraws,sdat,"Y")) ,statistics=NULL,error_pos = "right")
+
+otr=as.data.frame(ot[c(1:21,27),])
+for(i in 2:(nrow(otr))) for(j in 2:ncol(otr)){
   num=round(as.numeric(gsub("[\\*\\)\\(]","",otr[i,j])),3)
   otr[i,j]=gsub("(\\(?)([0-9\\.]+)([\\) \\*]*)",paste0("\\1",num,"\\3"),otr[i,j])
 }
 
+
+#otr=as.data.frame(ot[c(1,4:9,47,nrow(ot)),])
+#for(i in 2:(nrow(otr)-1)) for(j in 2:ncol(otr)){
+#  num=round(as.numeric(gsub("[\\*\\)\\(]","",otr[i,j])),3)
+#  otr[i,j]=gsub("(\\(?)([0-9\\.]+)([\\) \\*]*)",paste0("\\1",num,"\\3"),otr[i,j])
+#}
+
+otr[,1]=gsub('a0','(Intercept)',otr[,1])
 otr[,1]=gsub('a1','$\\\\omega$',otr[,1])
 otr[,1]=gsub('b0','$\\\\tau_0$',otr[,1])
 otr[,1]=gsub('b1','$\\\\tau_1$',otr[,1])
 otr[,1]=gsub('R2all','$R^2$',otr[,1])
-otr[1,3]="2PL"
+otr[1,4]="2PL"
+otr[1,c(3,5,7)]=""
 
-otr[nrow(otr),]=c(paste("\\multicolumn{5}{l}{",otr[nrow(otr),1],"}"),rep("",4))
-
+print(xtable(otr),floating=F,hline.after=c(-1,1,nrow(otr)-1,nrow(otr)),include.rownames=F,include.colnames=F,sanitize.text.function=function(x) x,
+file='tables/usageReg.tex')
 
 print(xtable(otr),floating=F,hline.after=c(-1,1,nrow(otr)-2,nrow(otr)-1),include.rownames=F,include.colnames=F,sanitize.text.function=function(x) x,
 file='tables/outcomeRegSmall.tex')
