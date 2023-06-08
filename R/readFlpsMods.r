@@ -30,8 +30,8 @@ grmsumm <- grmsumm$summary
 ### check convergence
 rbind(
     data.frame(rhat=raschsumm[,'Rhat'],model='rasch'),
-    data.frame(rhat=tplsumm[,'Rhat'],model='2PL'),
-    data.frame(rhat=grmsumm[,'Rhat'],model='GRM')#,
+    data.frame(rhat=tplsumm[,'Rhat'],model='2PL')#,
+#    data.frame(rhat=grmsumm[,'Rhat'],model='GRM')#,
     #data.frame(rhat=classicsumm[,'Rhat'],model='Classic')   
     )%>%
     group_by(model)%>%mutate(lab=c(paste(n(),'parameters\n',sum(rhat>1.1),'>1.1\n',sum(rhat>1.01),'>1.01'),rep(NA,length(rhat)-1)))%>%

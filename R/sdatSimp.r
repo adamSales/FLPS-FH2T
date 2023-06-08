@@ -11,7 +11,7 @@ load('data/flpsDat.RData')
 
 ### first try flps
 studDat1=studDat%>%
-    filter(StuID%in%flpsDat$StuID,!is.na(Scale.Score7))%>%
+    filter(StuID%in%flpsDat$StuID,!is.na(post.total_math_score))%>%
     group_by(teach)%>%
     mutate(teachTrt=n_distinct(rdm_condition))%>%
     ungroup()%>%
@@ -24,7 +24,7 @@ studDat1=studDat%>%
 save(studDat1,file='data/studDatAnalysisSample.RData')
 
 Ypsd=studDat1%>%ungroup()%>%group_by(rdm_condition)%>%
-    summarize(v=var(Scale.Score7),n=n())%>%
+    summarize(v=var(post.total_math_score),n=n())%>%
     ungroup()%>%
     summarize(pVar=sum(v*(n-1))/(sum(n)-2),psd=sqrt(pVar))%>%pull(psd)
 
@@ -32,6 +32,8 @@ Ypsd=studDat1%>%ungroup()%>%group_by(rdm_condition)%>%
 flpsDat1=flpsDat%>%
     filter(Z==1)%>%
     inner_join(select(studDat1,StuID,stud))
+
+makeSdat=function(flpsDat1){
 
 sdat=with(flpsDat1,
           list(
@@ -58,11 +60,16 @@ Xsds=apply(sdat$X,2,sd)
 
 sdat$X=scale(sdat$X)
 sdat$Z=ifelse(studDat1$rdm_condition=='ASSISTments',1,0)
-sdat$Y=studDat1$Scale.Score7/Ypsd
+sdat$Y=studDat1$post.total_math_score/Ypsd
 
 sdat$nprobWorked=nrow(flpsDat1)
 sdat$ncov=ncol(sdat$X)
 sdat$nstud=nrow(studDat1)
 sdat$nprob=max(sdat$prob)
+
+sdat
+}
+
+sdat=makeSdat(flpsDat1)
 
 save(sdat,file='data/sdatSimp.RData')
