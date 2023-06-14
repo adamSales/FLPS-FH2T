@@ -23,17 +23,19 @@ studDat1=studDat%>%
 
 save(studDat1,file='data/studDatAnalysisSample.RData')
 
-Ypsd=studDat1%>%ungroup()%>%group_by(rdm_condition)%>%
-    summarize(v=var(post.total_math_score),n=n())%>%
-    ungroup()%>%
-    summarize(pVar=sum(v*(n-1))/(sum(n)-2),psd=sqrt(pVar))%>%pull(psd)
 
 ### flps dat only IDs that are in studDat1 & new stud id
 flpsDat1=flpsDat%>%
     filter(Z==1)%>%
     inner_join(select(studDat1,StuID,stud))
 
-makeSdat=function(flpsDat1){
+makeSdat=function(flpsDat1,studDat1){
+
+Ypsd=studDat1%>%ungroup()%>%group_by(rdm_condition)%>%
+    summarize(v=var(post.total_math_score),n=n())%>%
+    ungroup()%>%
+    summarize(pVar=sum(v*(n-1))/(sum(n)-2),psd=sqrt(pVar))%>%pull(psd)
+
 
 sdat=with(flpsDat1,
           list(
