@@ -29,7 +29,9 @@ coefSumm <- function(coefdraws,sigdraws,X,out,ab){
   if(!missing(ab)) coefs <- cbind(ab,coefs)
   mean <- colMeans(coefs)
   sd <- apply(coefs,2,sd)
-  p <- apply(coefs,2,function(x) 2*min(mean(x<0),mean(x>0)))
+  p <- apply(coefs,2,
+    function(x) if(prod(quantile(x,c(0.025,0.975)))>0) 0.04 else 0.9)
+    #2*min(mean(x<0),mean(x>0)))
   beta <- cbind(mean,sd,t(apply(coefs,2,quantile,probs=c(0.025,0.975),na.rm=TRUE)),p)
   class(beta) <- 'stanSumm'
   attr(beta,"varComps") <- varComps(coefdraws,sigdraws,X,out)

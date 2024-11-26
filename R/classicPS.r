@@ -1,7 +1,7 @@
 library(rstan)
 library(splines)
 
-options(mc.cores = 8)
+options(mc.cores = 4)
 rstan_options(auto_write = TRUE)
 
 load('data/sdatSimp.RData')
@@ -17,5 +17,5 @@ sdatObs <- with(sdat,
                   Yt=Y[Z==1],
                   Yc=Y[Z==0]))
 
-psObs <- stan('R/classicPS.stan',data=sdatObs,chains=8)
+psObs <- stan('R/classicPS.stan',data=sdatObs,chains=4,iter=3000,warmup=1000)
 save(sdatObs,psObs,file='fittedModels/classicPS.RData')

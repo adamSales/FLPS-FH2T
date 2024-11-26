@@ -13,9 +13,9 @@ library(ggh4x)
 
 
 #print(load('fittedModels/classicPSlogit.RData'))
-load('fittedModels/flpsRasch1.RData')
-load('fittedModels/flps2plStan2.RData')
-load('fittedModels/grm2.RData')
+load('fittedModelsStateTest/flpsRasch1.RData')
+load('fittedModelsStateTest/flps2plStan2.RData')
+load('fittedModelsStateTest/grm2.RData')
 
 raschsumm=summary(flpsRasch1)
 raschsumm=raschsumm$summary
@@ -57,7 +57,28 @@ pd <- bind_rows(
     tibble(est=grmsumm[paste0('beta[',1:sdat$nprob,',2]'),'mean'],par='d_2',model='GRM'),
     tibble(est=grmsumm[paste0('gamma[',1:sdat$nprob,']'),'mean'],par='disc.',model='GRM'))%>%
     mutate(model=factor(model,levels=modelOrd))
+
+raschStudEffSD <- raschsumm[paste0('studEff[',seq(sdat$nstud),']'),'sd']
+raschProbEffSD <- raschsumm[paste0('probEff[',seq(sdat$nprob),']'),'sd']
+
+
+
+pdSD <- bind_rows(
+    tibble(est=c(raschStudEffSD,raschProbEffSD),par=c(rep('\\eta_T',sdat$nstud),rep('diff.',sdat$nprob)),model='Rasch'),
+    tibble(est=tplsumm[startsWith(rownames(tplsumm),'alpha['),'sd'],par='\\eta_T',model='2PL'),
+    tibble(est=tplsumm[startsWith(rownames(tplsumm),'beta['),'sd']+tplsumm['mu_beta','sd'],par='diff.',model='2PL'),
+    tibble(est=tplsumm[startsWith(rownames(tplsumm),'gamma['),'sd'],par='disc.',model='2PL'),
+    tibble(est=grmsumm[startsWith(rownames(grmsumm),'alpha['),'sd'],par='\\eta_T',model='GRM'),
+    tibble(est=grmsumm[paste0('beta[',1:sdat$nprob,',1]'),'sd'],par='d_1',model='GRM'),
+    tibble(est=grmsumm[paste0('beta[',1:sdat$nprob,',2]'),'sd'],par='d_2',model='GRM'),
+    tibble(est=grmsumm[paste0('gamma[',1:sdat$nprob,']'),'sd'],par='disc.',model='GRM'))%>%
+    mutate(model=factor(model,levels=modelOrd))
     
+pdSD%>%group_by(par,model)%>%summarize(mean(est))
+
+with(pdSD%>%filter(par=="\\eta_T"),
+  cbind(est[model=='Rasch'],est[model=='2PL'],est[model=='GRM']))%>%cor()
+
 #pdf('plots/studEffs.pdf')
 
 pStud <- with(sdat,
@@ -120,6 +141,11 @@ ggplot(pd,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=
 dev.off()
 
 
+### Pr( tau1 is positive)
+for(mod in c('flpsRasch1','flps2pl','fit')){
+  print(mod)
+  print(mean(rstan::extract(get(mod),par='b1')$b1>0))
+}
 
 
 ##################################################
@@ -178,6 +204,19 @@ print(
 dev.off()
 
 
-
-
+#### mbar plots
+diff = raschsumm[startsWith(rownames(raschsumm),'probEff'),'mean']
+probDiff=diff[sdat$prob]
+studDiff=tapply(probDiff,sdat$studentM,mean)
+mbar=tapply(sdat$firstTry,sdat$studentM,mean)
+nprob=tapply(sdat$studentM,sdat$studentM,length)
+eta= raschsumm[startsWith(rownames(raschsumm),'studEff'),'mean']
+eta= eta[sdat$Z==1]
 ###### 
+
+etaDraw=rstan::extract(flpsRasch1,'studEff')$studEff
+
+etaDraw=etaDraw[1,sdat$Z==1]
+
+
+
