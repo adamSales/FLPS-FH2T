@@ -29,17 +29,17 @@ probPartDat1%>%summarize(across(c(ProblemSet,ProblemID,probPart),n_distinct))
 
 ### load in fitted models
 
-print(load('fittedModelsStateTest/grm2.RData'))
+print(load('fittedModels/grm2.RData'))
 fitGrm <- fit
 grmDraws <- rstan::extract(fit)
 
 #print(load('fittedModels/classicPSlogit.RData'))
 #drawsObs <- rstan::extract(psObs)
 
-print(load('fittedModelsStateTest/flpsRasch1.RData'))
+print(load('fittedModels/flpsRasch1.RData'))
 raschDraws <- rstan::extract(flpsRasch1)
 
-print(load('fittedModelsStateTest/flps2plStan2.RData'))
+print(load('fittedModels/flps2plStan2.RData'))
 tplDraws <- rstan::extract(flps2pl)
 
 load('data/sdatSimp.RData')
@@ -260,19 +260,3 @@ r2=function(draws,Xmat){
   c(mean(R2),median(R2),sd(R2))
 }
 
-r2tab=setNames(
-  lapply(
-    list(drawsObs,raschDraws,tplDraws,grmDraws),
-    r2,Xmat=sdat$X),
-  modelOrd)
-
-r2tab=as.data.frame(r2tab)[1,]
-rownames(r2tab)="$R^2$"
-
-knitr::kable(r2tab,row.names=TRUE)
-
-
-probPos=lapply(
-    list(#drawsObs,
-    raschDraws,tplDraws,grmDraws),
-    function(x) mean(x$b1>0))

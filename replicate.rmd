@@ -1,0 +1,76 @@
+---
+title: "Replication Code"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message=FALSE,error=FALSE,cache=TRUE)
+```
+
+## Step 0: Load packages
+
+```{r packages}
+library(dplyr)
+library(readr)
+library(purrr)
+library(lubridate)
+library(missForest)
+library(forcats)
+library(rstan)
+library(splines)
+library(huxtable)
+library(flextable)
+library(tidyr)
+library(ggplot2)
+library(xtable)
+library(table1)
+
+sessionInfo()
+```
+
+## Step 1: Data Munging
+```{r dataMunge}
+source('R/data.r')
+source('R/sdatSimp.r')
+```
+
+
+## Step 2: Fit the models
+
+Fitting the models takes a loooonnnng time
+
+This code checks if there's already a fitted model available. If there isn't, it fits the model. To fit the models regardless, change the following to "TRUE":
+```{r refit, cache=FALSE}
+refit <- FALSE
+```
+
+Rasch:
+```{r rasch}
+if(refit|!file.exists('fittedModels/flpsRasch1.RData')){
+  print("Fitting Rasch")
+  source('R/flpsRasch.r')
+}
+```
+
+2PL:
+```{r 2pl}
+if(refit|!file.exists('fittedModels/flps2plStan2.RData')){
+  print("Fitting 2PL")
+  source('R/flps2pl.r')
+}
+```
+
+GRM:
+```{r grm}
+if(refit|!file.exists('fittedModels/grm2.RData')){
+  print("Fitting GRM")
+  source('R/grm.r')
+}
+```
+
+
+## Step 3: Make all the tables & figures
+
+```{r tables}
+source('R/tables.r')
+```

@@ -134,6 +134,7 @@ ggplot(pd,aes(par,est))+geom_violin()+geom_jitter(alpha=0.2)+geom_boxplot(width=
     scale_x_discrete(name=NULL,labels=c(
       "\\eta_T"="$\\eta_T$",
       "d_2"="$d_2$",
+      
       "d_1"="$d_1$"))+   
     #labels=c("\\eta_T"=expression(eta),"d_1"=expression(d[1]),"d_2"=expression(d[2])))+
     theme(text = element_text(size = 12)) +
